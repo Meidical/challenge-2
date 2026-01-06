@@ -130,7 +130,7 @@ def similarities_to_PIS(positive_separation, negative_separation, verbose=False)
 # Função principal
 #def calculate_topsis(mydata, verbose=False):
 
-def calculate_topsis(verbose=False):
+def calculate_topsis(tissue_type, verbose=False):
 
     # Carregar dados temporários para testar
     from matrix_for_TOPSIS import mydata
@@ -151,7 +151,12 @@ def calculate_topsis(verbose=False):
     criteria_preferences = np.array([1, -1, 1, 1, 1, 1])
 
     # Os pesos serão criados através do AHP?
-    criteria_weight = np.array([0.4029, 0.1423, 0.3088, 0.0555, 0.0604, 0.0302])
+    if tissue_type == 'BM': #Se a transfusão for de medula óssea, o ABO_match tem peso maior que o Gender_match
+        criteria_weight = np.array([0.4029, 0.1423, 0.3088, 0.0555, 0.0604, 0.0302])
+    elif tissue_type == 'Blood':
+        criteria_weight = np.array([0.4029, 0.1423, 0.3088, 0.0604, 0.0555, 0.030285])
+    else:
+        raise ValueError("Tipo de tecido inválido. Use 'BM' para medula óssea ou 'Blood' para sangue.")
 
     # Prepara matriz
     matrix = mydata.iloc[:, 1:].values.astype(int)
@@ -174,6 +179,6 @@ def calculate_topsis(verbose=False):
 
 
 if __name__ == "__main__":
-    resultado = calculate_topsis(verbose=False)
+    resultado = calculate_topsis('BM', verbose=False)
     print("\n=== TOPSIS Results ===")
     print(resultado)
