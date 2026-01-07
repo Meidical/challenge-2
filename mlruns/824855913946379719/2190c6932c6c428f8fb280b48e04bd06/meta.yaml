@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/824855913946379719/2190c6932c6c428f8fb280b48e04bd06/artifacts
+end_time: 1767756124983
+entry_point_name: ''
+experiment_id: '824855913946379719'
+lifecycle_stage: active
+run_id: 2190c6932c6c428f8fb280b48e04bd06
+run_name: rf_tuned
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767756110508
+status: 3
+tags: []
+user_id: tomas

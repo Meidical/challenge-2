@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/824855913946379719/d61dbd39f1c54488a9b57201515121a4/artifacts
+end_time: 1767801084964
+entry_point_name: ''
+experiment_id: '824855913946379719'
+lifecycle_stage: active
+run_id: d61dbd39f1c54488a9b57201515121a4
+run_name: svm_gan_2
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767801015546
+status: 3
+tags: []
+user_id: tomas

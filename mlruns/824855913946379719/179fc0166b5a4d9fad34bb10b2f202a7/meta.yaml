@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/824855913946379719/179fc0166b5a4d9fad34bb10b2f202a7/artifacts
+deleted_time: 1767749905717
+end_time: 1767749837829
+entry_point_name: ''
+experiment_id: '824855913946379719'
+lifecycle_stage: deleted
+run_id: 179fc0166b5a4d9fad34bb10b2f202a7
+run_name: rf_base
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767749837692
+status: 3
+tags: []
+user_id: tomas

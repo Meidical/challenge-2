@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/tomas/PycharmProjects/challenge-2/mlruns/0/c1f636a386a34005887ee06b425b4523/artifacts
+deleted_time: 1767749251858
+end_time: 1767748905197
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: deleted
+run_id: c1f636a386a34005887ee06b425b4523
+run_name: extra_trees_smote
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767748905097
+status: 3
+tags: []
+user_id: tomas
