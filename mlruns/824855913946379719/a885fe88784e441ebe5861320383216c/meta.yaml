@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/824855913946379719/a885fe88784e441ebe5861320383216c/artifacts
+deleted_time: 1767756731162
+end_time: 1767756394470
+entry_point_name: ''
+experiment_id: '824855913946379719'
+lifecycle_stage: deleted
+run_id: a885fe88784e441ebe5861320383216c
+run_name: xgb_tuned
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767756384694
+status: 4
+tags: []
+user_id: tomas

@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/824855913946379719/32baa82e5f684c92b5ee4e4e93cd48c7/artifacts
+end_time: 1767756238340
+entry_point_name: ''
+experiment_id: '824855913946379719'
+lifecycle_stage: active
+run_id: 32baa82e5f684c92b5ee4e4e93cd48c7
+run_name: et_base
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767756238039
+status: 3
+tags: []
+user_id: tomas

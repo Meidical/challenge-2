@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/tomas/PycharmProjects/challenge-2/mlruns/0/a3570a3e75e84ed2898a11484c238c4a/artifacts
+deleted_time: 1767749251866
+end_time: 1767748764434
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: deleted
+run_id: a3570a3e75e84ed2898a11484c238c4a
+run_name: svm_rbf
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767748764385
+status: 3
+tags: []
+user_id: tomas

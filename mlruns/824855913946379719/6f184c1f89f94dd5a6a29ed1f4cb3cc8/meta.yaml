@@ -1,0 +1,15 @@
+artifact_uri: mlflow-artifacts:/824855913946379719/6f184c1f89f94dd5a6a29ed1f4cb3cc8/artifacts
+deleted_time: 1767803832996
+end_time: 1767803798850
+entry_point_name: ''
+experiment_id: '824855913946379719'
+lifecycle_stage: deleted
+run_id: 6f184c1f89f94dd5a6a29ed1f4cb3cc8
+run_name: lr_gan_200
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767803727646
+status: 3
+tags: []
+user_id: tomas

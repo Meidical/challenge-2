@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/tomas/PycharmProjects/challenge-2/mlruns/0/65f68ed5bdaa4ca9a34da705a7334e3f/artifacts
+deleted_time: 1767749251872
+end_time: 1767748212743
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: deleted
+run_id: 65f68ed5bdaa4ca9a34da705a7334e3f
+run_name: rf_baseline
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1767748212729
+status: 4
+tags: []
+user_id: tomas
