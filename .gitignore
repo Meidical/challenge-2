@@ -1,2 +1,18 @@
 .vscode/
 __pycache__/
+.venv
+
+# MLflow
+mlflow/mlruns/
+mlflow/models/
+mlflow/mlartifacts/
+mlruns/
+*.db
+*.sqlite
+
+# SDV metadata
+bone_marrow_metadata.json
+
+# Jupyter
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/

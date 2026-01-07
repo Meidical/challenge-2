@@ -1,6 +1,6 @@
 import logging
 import os
-
+import uuid
 import mlflow
 from mlflow.models import infer_signature
 import numpy as np
@@ -16,11 +16,10 @@ from sklearn.metrics import accuracy_score, f1_score
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV, StratifiedKFold, train_test_split
 from sklearn.pipeline import FunctionTransformer
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
-from mlflow_experiments import EXPERIMENTS, PARAM_GRIDS, MODEL_REGISTRY
 from sdv.single_table import CTGANSynthesizer
 from sdv.metadata import Metadata
 from sdv.sampling import Condition
-
+from mlflow_experiments import EXPERIMENTS, PARAM_GRIDS, MODEL_REGISTRY_CLASSIFICATION, MODEL_REGISTRY_REGRESSION
 
 
 def load_dataset(file_path: str):
@@ -47,15 +46,13 @@ def get_training_data(
     y_train,
     experiment
 ):
-    
+
     if not experiment["gan"]:
         return X_train, y_train
-    
 
     # Apply GAN
     gan_df = X_train.copy()
     gan_df["is_dead"] = y_clf_train.values
-
 
     gan_df = gan_df.dropna().reset_index(drop=True)
 
@@ -63,6 +60,9 @@ def get_training_data(
         data=gan_df,
         table_name="bone_marrow_transplant"
     )
+
+    # Save metadata for replicability
+    metadata.save_to_json(f"bone_marrow_metadata_{uuid.uuid4()}.json")
 
     batch_size = 10
 
@@ -86,7 +86,8 @@ def get_training_data(
         column_values={'is_dead': 1}
     )
 
-    synthetic = ctgan.sample_from_conditions(conditions=[alive_condition, dead_condition])
+    synthetic = ctgan.sample_from_conditions(
+        conditions=[alive_condition, dead_condition])
     X_synth = synthetic.drop(columns=["is_dead"])
     y_synth = synthetic["is_dead"]
 
@@ -126,7 +127,8 @@ def build_preprocessor():
     ])
 
     hla_pipeline = Pipeline([
-        ("parser", FunctionTransformer(parse_hla_match, feature_names_out="one-to-one")),
+        ("parser", FunctionTransformer(
+            parse_hla_match, feature_names_out="one-to-one")),
         ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
         ("scaler", MinMaxScaler())
     ])
@@ -170,6 +172,7 @@ def build_preprocessor():
 
     return preprocessor
 
+
 def feature_engineering(X):
     X = X.copy()
 
@@ -194,6 +197,7 @@ def feature_engineering(X):
               "recipient_age_bin",
               "age_gap"]]
 
+
 def parse_hla_match(X):
     s = X.iloc[:, 0]
     return (
@@ -204,15 +208,16 @@ def parse_hla_match(X):
         .to_frame()
     )
 
+
 def build_pipeline(model, use_smote=False):
     preprocessor = build_preprocessor()
 
     steps = [("preprocessor", preprocessor)]
 
     if use_smote:
-        steps.append(("smote", SMOTE(random_state=42))) 
+        steps.append(("smote", SMOTE(random_state=42)))
 
-    steps.append(("classifier", model))     
+    steps.append(("classifier", model))
 
     return Pipeline(steps)
 
@@ -241,14 +246,20 @@ def tune_model(
 
     return gs
 
+
 def run_experiment(
     experiment,
     X_train,
     y_train,
     X_test,
-    y_test
+    y_test,
+    model
 ):
-    model = MODEL_REGISTRY[experiment["model"]]
+
+    if model == "classification":
+        model = MODEL_REGISTRY_CLASSIFICATION[experiment["model"]]
+    else:
+        model = MODEL_REGISTRY_REGRESSION[experiment["model"]]
 
     pipeline = build_pipeline(
         model=model,
@@ -265,22 +276,39 @@ def run_experiment(
             "experiment_type": "classification",
         })
 
+        # Log datasets
+        train_df = X_train.copy()
+        train_df["target"] = y_train.values
+        train_dataset = mlflow.data.from_pandas(
+            train_df,
+            targets="target",
+            name="train_dataset"
+        )
+
+        test_df = X_test.copy()
+        test_df["target"] = y_test.values
+        test_dataset = mlflow.data.from_pandas(
+            test_df,
+            targets="target",
+            name="test_dataset"
+        )
+
+        mlflow.log_input(train_dataset, context="training")
+        mlflow.log_input(test_dataset, context="testing")
+
         if experiment["gan"]:
             mlflow.log_metric("gan_samples_0", experiment["gan_0"])
             mlflow.log_metric("gan_samples_1", experiment["gan_1"])
 
-
         mlflow.log_params(experiment)
 
-        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-
+        cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
 
         X_tr, y_tr = get_training_data(
             X_train=X_train,
             y_train=y_train,
-            experiment = experiment
+            experiment=experiment
         )
-
 
         if experiment["tune"]:
             gs = tune_model(
@@ -298,38 +326,99 @@ def run_experiment(
             best_model = pipeline.fit(X_tr, y_tr)
 
         y_pred_train = best_model.predict(X_tr)
-        y_pred_cv = cross_val_predict(best_model, X_tr, y_tr, cv=cv, verbose=10, n_jobs=-1)
+        y_pred_cv = cross_val_predict(
+            best_model, X_tr, y_tr, cv=cv, verbose=10, n_jobs=-1)
         y_pred_test = best_model.predict(X_test)
 
-        # Metrics on train set
-        mlflow.log_metric("accuracy_train", accuracy_score(y_tr, y_pred_train))
-        mlflow.log_metric("f1_weighted_train", f1_score(y_tr, y_pred_train, average="weighted"))
+        if model == "classification":
+            # Metrics on train set
+            mlflow.log_metric("accuracy_train",
+                              accuracy_score(y_tr, y_pred_train))
+            mlflow.log_metric("f1_weighted_train", f1_score(
+                y_tr, y_pred_train, average="weighted"))
 
-        # Metrics on cv train set
-        mlflow.log_metric("accuracy_cv_train", accuracy_score(y_tr, y_pred_cv))
-        mlflow.log_metric("f1_weighted_cv_train", f1_score(y_tr, y_pred_cv, average="weighted"))
+            # Metrics on cv train set
+            mlflow.log_metric("accuracy_cv_train",
+                              accuracy_score(y_tr, y_pred_cv))
+            mlflow.log_metric("f1_weighted_cv_train", f1_score(
+                y_tr, y_pred_cv, average="weighted"))
 
-        # Metrics on test set
-        mlflow.log_metric("accuracy_test", accuracy_score(y_test, y_pred_test))
-        mlflow.log_metric("f1_weighted_test", f1_score(y_test, y_pred_test, average="weighted"))
+            # Metrics on test set
+            mlflow.log_metric(
+                "accuracy_test", accuracy_score(y_test, y_pred_test))
+            mlflow.log_metric("f1_weighted_test", f1_score(
+                y_test, y_pred_test, average="weighted"))
+        else:
+            # Metrics on train set
+            mlflow.log_metric("rmse_train", np.sqrt(
+                np.mean((y_tr - y_pred_train) ** 2)))
 
-    return best_model
+            # Metrics on cv train set
+            mlflow.log_metric("rmse_cv_train", np.sqrt(
+                np.mean((y_tr - y_pred_cv) ** 2)))
+
+            # Metrics on test set
+            mlflow.log_metric("rmse_test", np.sqrt(
+                np.mean((y_test - y_pred_test) ** 2)))
+
+        # Log the model
+        signature = infer_signature(X_train, y_pred_train)
+        mlflow.sklearn.log_model(
+            sk_model=best_model,
+            artifact_path="model",
+            signature=signature
+        )
+
+    return best_model.predict(X_train)
+
+
+def run_mlflow(model):
+    X_train, X_test, y_reg_train, y_reg_test, y_clf_train, y_clf_test = split_data(
+        dataset)
+
+    mlflow.set_experiment(f"bone-marrow-{model}")
+
+    for exp in EXPERIMENTS[model]:
+        if model == "regression":
+            x_reg_train = run_experiment(
+                experiment=exp,
+                X_train=X_train,
+                y_train=y_clf_train,
+                X_test=X_test,
+                y_test=y_clf_test,
+                model="classification",
+            )
+            X_train['is_dead'] = x_reg_train
+            X_test['is_dead'] = y_clf_test.values
+
+            run_experiment(
+                experiment=exp,
+                X_train=X_train,
+                y_train=y_reg_train,
+                X_test=X_test,
+                y_test=y_reg_test,
+                model="regression",
+            )
+        else:
+            run_experiment(
+                experiment=exp,
+                X_train=X_train,
+                y_train=y_clf_train,
+                X_test=X_test,
+                y_test=y_clf_test,
+                model=model,
+            )
+
+        break
 
 
 print(os.getcwd())
-dataset = load_dataset("./mlflow/data/bone_narrow_raw.xlsx")
-X_train, X_test, y_reg_train, y_reg_test, y_clf_train, y_clf_test = split_data(dataset)
 
+dataset = load_dataset(
+    "/Users/luismagalhaes/MEI/challenge-2/mlflow/data/bone_narrow_raw.xlsx")
 
 mlflow.set_tracking_uri("http://127.0.0.1:5000")
-mlflow.set_experiment("bone-marrow-classification")
+# run_mlflow("classification", X_train,
+#           X_test, y_clf_train, y_clf_test)
 
-for exp in EXPERIMENTS:
-
-    run_experiment(
-        experiment=exp,
-        X_train=X_train,
-        y_train=y_clf_train,
-        X_test=X_test,
-        y_test=y_clf_test
-    )
+run_mlflow("regression")
