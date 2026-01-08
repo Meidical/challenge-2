@@ -2,6 +2,17 @@
 
 import pandas as pd
 import numpy as np
+import os
+import sys
+
+# Ensure sibling package 'AHP' is importable when running this file directly
+CURRENT_DIR = os.path.dirname(__file__)
+PARENT_DIR = os.path.dirname(CURRENT_DIR)
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+
+from AHP.AHP import calculate_ahp_weights_BM
+
 
 # Funções auxiliares
 
@@ -127,14 +138,14 @@ def similarities_to_PIS(positive_separation, negative_separation, verbose=False)
     return relative_similarity
 
 
+
 # Função principal
+
 #def calculate_topsis(mydata, verbose=False):
 
-def calculate_topsis(tissue_type, verbose=False):
+def calculate_topsis(dataframe, stem_cell_source, verbose=False):
 
-    # Carregar dados temporários para testar
-    from matrix_for_TOPSIS import mydata
-    mydata
+    mydata = dataframe.loc[:, ['Donor_id', 'HLA Match', 'CMV Serostatus', 'Donor Age Group', 'Gender Match', 'ABO Match', 'Expected Survival Time']]
 
     # Estrutura do DataFrame necessária para o funcionamento do TOPSIS:
     # |─────────────|───────────|─────────────────|───────────────────|─────────────────|────────────|─────────────────────────|
@@ -150,16 +161,23 @@ def calculate_topsis(tissue_type, verbose=False):
     # Minimizar: CMV_status
     criteria_preferences = np.array([1, -1, 1, 1, 1, 1])
 
-    # Os pesos serão criados através do AHP?
-    if tissue_type == 'BM': #Se a transfusão for de medula óssea, o ABO_match tem peso maior que o Gender_match
-        criteria_weight = np.array([0.4029, 0.1423, 0.3088, 0.0555, 0.0604, 0.0302])
-    elif tissue_type == 'Blood':
-        criteria_weight = np.array([0.4029, 0.1423, 0.3088, 0.0604, 0.0555, 0.030285])
+    # Os pesos serão criados através do AHP
+
+    if stem_cell_source == 'BM': #Se a transfusão for de medula óssea, o ABO_match tem peso maior que o Gender_match
+
+        #criteria_weight = np.array([0.4029, 0.1423, 0.3088, 0.0555, 0.0604, 0.0302])
+        weights_BM = calculate_ahp_weights_BM('BM')
+        criteria_weight = np.array(weights_BM(['HLA Match', 'CMV Serostatus', 'Donor Age Group', 'Gender Match', 'ABO Match', 'Expected Survival Time']))
+
+    elif stem_cell_source == 'Blood':
+        weights_BM = calculate_ahp_weights_BM('Blood')
+        criteria_weight = np.array(weights_BM(['HLA Match', 'CMV Serostatus', 'Donor Age Group', 'Gender Match', 'ABO Match', 'Expected Survival Time']))
+
     else:
         raise ValueError("Tipo de tecido inválido. Use 'BM' para medula óssea ou 'Blood' para sangue.")
 
     # Prepara matriz
-    matrix = mydata.iloc[:, 1:].values.astype(int)
+    matrix = mydata.iloc[:, 1:].values.astype(int) #Exclui a primeira coluna (Donor_id)
     
     # Chama as funções auxiliares
     norm_matrix = normalize_matrix(matrix, verbose=verbose)
@@ -178,7 +196,14 @@ def calculate_topsis(tissue_type, verbose=False):
     return df_TOPSIS
 
 
+# Execução direta para testes
 if __name__ == "__main__":
-    resultado = calculate_topsis('BM', verbose=False)
+
+    # Carregar dados temporários para testar
+    from matrix_for_TOPSIS import dataframe
+
+    stem_cell_source = 'BM'
+    stem_cell_source = 'Blood'
+    resultado = calculate_topsis(dataframe, stem_cell_source, verbose=True)
     print("\n=== TOPSIS Results ===")
     print(resultado)

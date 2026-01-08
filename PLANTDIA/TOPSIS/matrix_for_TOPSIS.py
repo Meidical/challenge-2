@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Usar DataFrame do pandas para permitir cabeçalhos
-mydata = pd.DataFrame([
+dataframe = pd.DataFrame([
     [1, 7, 0, 0, 0, 0, 100],
     [2, 8, 1, 1, 1, 1, 200],
     [3, 9, 2, 2, 0, 0, 300],
