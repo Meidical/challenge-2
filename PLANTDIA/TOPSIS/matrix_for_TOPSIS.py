@@ -27,4 +27,4 @@ dataframe = pd.DataFrame([
     [22, 23, 9, 2, 0, 1, 0, 320, "Diogo José Moniz Carvalhal", "Rita Maria Belchior Soares"],
     [23, 24, 8, 0, 1, 1, 1, 240, "Mariana Rita Madruga Veleda", "Inês Sofia Covas Mesquita"],
     [24, 25, 10, 1, 2, 0, 1, 450, "Rita Sofia Castanheira Lopes", "Miguel Pedro Figueiral Alves"] # F-> M
-], columns=["Recipient_id", "Donor_id", "HLA Match", "CMV Serostatus", "Donor Age Group", "Gender Match", "ABO Match", "Expected Survival Time","Donor Name", "Recipient Name"])
+], columns=["recipient_ID", "donor_ID", "HLA Match", "CMV Serostatus", "Donor Age Group", "Gender Match", "ABO Match", "Expected Survival Time","Donor Name", "Recipient Name"])

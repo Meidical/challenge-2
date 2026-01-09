@@ -13,7 +13,6 @@ if PARENT_DIR not in sys.path:
 
 from AHP.AHP import calculate_ahp_weights_BM
 
-
 # Funções auxiliares
 
 # Normalização da matriz
@@ -144,16 +143,17 @@ def similarities_to_PIS(positive_separation, negative_separation, verbose=False)
 #def calculate_topsis(mydata, verbose=False):
 
 def calculate_topsis(dataframe, stem_cell_source, verbose=False):
+
     # Normalize column names so we can accept both spaced and underscored IDs
     column_aliases = {
-        'Recipient ID': 'Recipient_id',
-        'Donor ID': 'Donor_id',
+        'Recipient ID': 'recipient_ID',
+        'Donor ID': 'donor_ID',
     }
     normalized_df = dataframe.rename(columns=column_aliases)
 
     required_columns = [
-        'Recipient_id',
-        'Donor_id',
+        'recipient_ID',
+        'donor_ID',
         'HLA Match',
         'CMV Serostatus',
         'Donor Age Group',
@@ -173,7 +173,7 @@ def calculate_topsis(dataframe, stem_cell_source, verbose=False):
 
     # Estrutura do DataFrame necessária para o funcionamento do TOPSIS:
     # |─────────────|───────────|───────────|─────────────────|───────────────────|───────────────|────────────|──────────────────────────|-----------|--------------|
-    # |Recipient_id │ Donor_id  │ HLA Match │ CMV Serostatus  │  Donor Age Group  │ Gender Match  │ ABO Match  │ Expected Survival Time   │Donor Name |Recipient Name|
+    # |recipient_ID │ donor_ID  │ HLA Match │ CMV Serostatus  │  Donor Age Group  │ Gender Match  │ ABO Match  │ Expected Survival Time   │Donor Name |Recipient Name|
     # ├─────────────┼───────────┼───────────┼─────────────────┼───────────────────┼───────────── ─┼────────────┤──────────────────────────┤-----------|--------------|        
     # |    str      │ str       │ int       │ int             │ int               │ int           │ int        │ int                      │str        |str           |
     # └─────────────┴───────────┴───────────┴─────────────────┴───────────────────┴───────────── ─┴────────────┘──────────────────────────┘-----------|--------------|
@@ -212,13 +212,16 @@ def calculate_topsis(dataframe, stem_cell_source, verbose=False):
     scores = similarities_to_PIS(pos_sep, neg_sep, verbose=verbose)
     
     # Cria resultado final
-    recipient_id_column = mydata["Recipient_id"]
-    donor_id_column = mydata["Donor_id"]
+    recipient_id_column = mydata["recipient_ID"]
+    donor_id_column = mydata["donor_ID"]
     donor_name_column = mydata["Donor Name"]
     recipient_name_column = mydata["Recipient Name"]
 
     results_series = pd.Series(scores, name='TOPSIS Score')
     df_TOPSIS = pd.concat([recipient_id_column, donor_id_column, results_series, donor_name_column, recipient_name_column], axis=1)
+    data=normalized_df.copy().drop(columns=['recipient_ID', 'donor_ID', 'Donor Name', 'Recipient Name'])
+    print("aqui", data.columns)
+    df_TOPSIS = pd.concat([df_TOPSIS, data], axis=1)
     df_TOPSIS = df_TOPSIS.sort_values(by='TOPSIS Score', ascending=False)
     df_TOPSIS.rename(columns={'TOPSIS Score': 'TOPSIS Rank'}, inplace=True)
     print("\n=== TOPSIS Results ===")
