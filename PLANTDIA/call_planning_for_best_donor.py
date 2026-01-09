@@ -11,7 +11,7 @@ donors_CSV_PATH = os.path.join(BASE_DIR, "..", "datasets", "raw", "donor_list_ra
 recipient_CSV_PATH = os.path.join(BASE_DIR, "..", "datasets", "raw", "recipient_waiting_list_raw.csv")  
 
 
-df_recipients = pd.read_csv(recipient_CSV_PATH, sep=';', skip_blank_lines=True)
+df_recipients = pd.read_csv(recipient_CSV_PATH, sep=';', skip_blank_lines=True, encoding='latin1')
 
 
 def call_prepare_data_for_topsis():
@@ -21,7 +21,7 @@ def call_prepare_data_for_topsis():
     while True:      
         recipient_id = input("\nIndique um receptor: ")
         if recipient_id in df_recipients['recipient_ID'].tolist():
-            print("\nVocê digitou:", recipient_id)
+            print("\nVocê digitou:", recipient_id, "Name:", df_recipients.loc[df_recipients['recipient_ID'] == recipient_id, 'recipient_name'].values[0])
             aggregated_data = aggregate_data(recipient_id, donors_CSV_PATH, recipient_CSV_PATH)
             break
                 
