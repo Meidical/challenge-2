@@ -86,7 +86,7 @@ relations_BM = [
 ]
 
 
-relations_Blood = [
+relations_PBSC = [
     [1,     3,     1.5,   9,     7,     9],
     [1/3,   1,     1/3,   3,     3,     5],
     [2/3,   3,     1,     7,     5,     7],
@@ -96,7 +96,7 @@ relations_Blood = [
 ]
 
 ahp_df_BM = pd.DataFrame(relations_BM, index=criteria, columns=criteria)
-ahp_df_Blood = pd.DataFrame(relations_Blood, index=criteria, columns=criteria)
+ahp_df_PBSC = pd.DataFrame(relations_PBSC, index=criteria, columns=criteria)
 
 # Função para definir os índices de prioridade
 def calculate_priority_indices(ahp_matrix):
@@ -179,10 +179,10 @@ def calculate_ahp_weights_BM(stem_cell_source):
 
     if stem_cell_source == 'BM':
          matrix = pd.DataFrame(relations_BM, index=criteria, columns=criteria)
-    elif stem_cell_source == 'Blood':
-         matrix = pd.DataFrame(relations_Blood, index=criteria, columns=criteria)   
+    elif stem_cell_source == 'PBSC':
+         matrix = pd.DataFrame(relations_PBSC, index=criteria, columns=criteria)   
     else:
-        raise ValueError("Tipo de tecido inválido. Use 'BM' para medula óssea ou 'Blood' para sangue.") 
+        raise ValueError("Tipo de tecido inválido. Use 'BM' para medula óssea ou 'PBSC' para sangue.") 
     
     pri = calculate_priority_indices(matrix)
 
@@ -196,7 +196,7 @@ if __name__ == "__main__":
     # Show the matrix and calculated indices/consistency when running this file directly
 
     stem_cell_source = 'BM'
-    stem_cell_source = 'Blood'
+    stem_cell_source = 'PBSC'
 
     if stem_cell_source == 'BM':
         print(ahp_df_BM)
@@ -213,13 +213,13 @@ if __name__ == "__main__":
             print('The model is not consistent')
 
 
-    elif stem_cell_source == 'Blood':
-        print(ahp_df_Blood)
+    elif stem_cell_source == 'PBSC':
+        print(ahp_df_PBSC)
         print("\nÍndices de Prioridade dos Critérios:")
-        indices = calculate_priority_indices(ahp_df_Blood)
+        indices = calculate_priority_indices(ahp_df_PBSC)
         print(indices) 
    
-        cr = calculate_consistency_ratio(ahp_df_Blood, indices)
+        cr = calculate_consistency_ratio(ahp_df_PBSC, indices)
         print(f"\nRácio de Consistência (CR): {cr:.4f}")
 
         if cr < 0.1:
