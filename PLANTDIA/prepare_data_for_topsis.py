@@ -2,7 +2,7 @@
 
     # Estrutura do DataFrame necessária para o funcionamento do TOPSIS:
     # |─────────────|───────────|───────────|─────────────────|───────────────────|───────────────|────────────|──────────────────────────|-----------|--------------|
-    # |Recipient_id │ Donor_id  │ HLA Match │ CMV Serostatus  │  Donor Age Group  │ Gender Match  │ ABO Match  │ Expected Survival Time   │Donor Name |Recipient Name|
+    # |recipient_ID │ donor_ID  │ HLA Match │ CMV Serostatus  │  Donor Age Group  │ Gender Match  │ ABO Match  │ Expected Survival Time   │Donor Name |Recipient Name|
     # ├─────────────┼───────────┼───────────┼─────────────────┼───────────────────┼───────────── ─┼────────────┤──────────────────────────┤-----------|--------------|        
     # |    str      │ str       │ int       │ int             │ int               │ int           │ int        │ int                      │str        |str           |
     # └─────────────┴───────────┴───────────┴─────────────────┴───────────────────┴───────────── ─┴────────────┘──────────────────────────┘-----------|--------------|
@@ -38,11 +38,11 @@ def aggregate_data(id, donor_list_path, recipient_list_path):
     
     df_recipients = load_dataset(recipient_list_path)
 
-    rows_recipients =df_recipients.loc[df_recipients['recipient_ID'] == recipient_ID]
+    rows_recipients =df_recipients.loc[df_recipients['recipient_ID'] == recipient_ID.upper()]
     print("\n### Recipient Info ###")
     print("ID:", rows_recipients['recipient_ID'].values[0],"\n", "Name:", rows_recipients['recipient_name'].values[0],"\n", "ABO:", rows_recipients['recipient_ABO'].values[0],"\n", "CMV:", rows_recipients['recipient_CMV'].values[0],"\n", "Sex:", rows_recipients['recipient_gender'].values[0],"\n", "Tissue Type:", rows_recipients['tissue_type'].values[0],"\n")        
     if rows_recipients.empty:
-        raise ValueError(f"Recipient_id {recipient_ID} não encontrado")
+        raise ValueError(f"recipient_ID {recipient_ID} não encontrado")
 
     df_donors = load_dataset(donor_list_path)
 
@@ -77,7 +77,7 @@ def aggregate_data(id, donor_list_path, recipient_list_path):
 
     for donor in df_donors.iterrows():
         donor = donor[1]  # extrai a série do doador
-        donor_id = donor['donor_ID'] if 'donor_ID' in donor else None
+        donor_ID = donor['donor_ID'] if 'donor_ID' in donor else None
         donor_name = donor['donor_name']
 
         # HLA Match
@@ -106,7 +106,7 @@ def aggregate_data(id, donor_list_path, recipient_list_path):
         aggregated_data["Donors"].append({
             "Recipient ID": recipient_ID,
             "Recipient Name": rows_recipients['recipient_name'].values[0],
-            "Donor ID": donor_id,
+            "Donor ID": donor_ID,
             "Donor Name": donor_name,
             "HLA Match": HLA_match,
             "CMV Serostatus": CMV_Serostatus,

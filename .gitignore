@@ -1,12 +1,14 @@
 .vscode/
 __pycache__/
 .venv
+.idea/
 
 # MLflow
-mlflow/mlruns/
 mlflow/models/
 mlflow/mlartifacts/
 mlruns/
+mlartifacts/
+
 *.db
 *.sqlite
 
@@ -16,3 +18,21 @@ bone_marrow_metadata.json
 # Jupyter
 .ipynb_checkpoints/
 */.ipynb_checkpoints/
+
+# LATEX files
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.nav
+*.snm
+*.bbl
+*.blg
+*.bak
+*.tmp
+*.swp
