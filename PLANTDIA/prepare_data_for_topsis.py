@@ -1,11 +1,11 @@
 # Esta classe é responsável pela criação do dataset de entrada para o TOPSIS
 
     # Estrutura do DataFrame necessária para o funcionamento do TOPSIS:
-    # |─────────────|───────────|───────────|─────────────────|───────────────────|───────────────|────────────|──────────────────────────|
-    # |Recipient_id │ Donor_id  │ HLA Match │ CMV Serostatus  │  Donor Age Group  │ Gender Match  │ ABO Match  │ Expected Survival Time   │
-    # ├─────────────┼───────────┼───────────┼─────────────────┼───────────────────┼───────────── ─┼────────────┤──────────────────────────┤        
-    # |    str      │ str       │ int       │ int             │ int               │ int           │ int        │ int                      │
-    # └─────────────┴───────────┴───────────┴─────────────────┴───────────────────┴───────────── ─┴────────────┘──────────────────────────┘
+    # |─────────────|───────────|───────────|─────────────────|───────────────────|───────────────|────────────|──────────────────────────|-----------|--------------|
+    # |recipient_ID │ donor_ID  │ HLA Match │ CMV Serostatus  │  Donor Age Group  │ Gender Match  │ ABO Match  │ Expected Survival Time   │Donor Name |Recipient Name|
+    # ├─────────────┼───────────┼───────────┼─────────────────┼───────────────────┼───────────── ─┼────────────┤──────────────────────────┤-----------|--------------|        
+    # |    str      │ str       │ int       │ int             │ int               │ int           │ int        │ int                      │str        |str           |
+    # └─────────────┴───────────┴───────────┴─────────────────┴───────────────────┴───────────── ─┴────────────┘──────────────────────────┘-----------|--------------|
 
 import os
 import sys
@@ -20,7 +20,7 @@ if PROJECT_ROOT not in sys.path:
 
 # Lê o dataset de doadores e recetores
 def load_dataset(list_path):
-    df = pd.read_csv(list_path, sep=';', skip_blank_lines=True)
+    df = pd.read_csv(list_path, sep=';', skip_blank_lines=True, encoding="latin1")
     return df
 
 # Importa a classe responsável por calcular os matches
@@ -38,11 +38,11 @@ def aggregate_data(id, donor_list_path, recipient_list_path):
     
     df_recipients = load_dataset(recipient_list_path)
 
-    rows_recipients =df_recipients.loc[df_recipients['recipient_ID'] == recipient_ID]
+    rows_recipients =df_recipients.loc[df_recipients['recipient_ID'] == recipient_ID.upper()]
     print("\n### Recipient Info ###")
-    print("ID:", rows_recipients['recipient_ID'].values[0],"\n", "ABO:", rows_recipients['recipient_ABO'].values[0],"\n", "CMV:", rows_recipients['recipient_CMV'].values[0],"\n", "Sex:", rows_recipients['recipient_gender'].values[0],"\n", "Tissue Type:", rows_recipients['tissue_type'].values[0],"\n")        
+    print("ID:", rows_recipients['recipient_ID'].values[0],"\n", "Name:", rows_recipients['recipient_name'].values[0],"\n", "ABO:", rows_recipients['recipient_ABO'].values[0],"\n", "CMV:", rows_recipients['recipient_CMV'].values[0],"\n", "Sex:", rows_recipients['recipient_gender'].values[0],"\n", "Tissue Type:", rows_recipients['tissue_type'].values[0],"\n")        
     if rows_recipients.empty:
-        raise ValueError(f"Recipient_id {recipient_ID} não encontrado")
+        raise ValueError(f"recipient_ID {recipient_ID} não encontrado")
 
     df_donors = load_dataset(donor_list_path)
 
@@ -77,7 +77,8 @@ def aggregate_data(id, donor_list_path, recipient_list_path):
 
     for donor in df_donors.iterrows():
         donor = donor[1]  # extrai a série do doador
-        donor_id = donor['donor_ID'] if 'donor_ID' in donor else None
+        donor_ID = donor['donor_ID'] if 'donor_ID' in donor else None
+        donor_name = donor['donor_name']
 
         # HLA Match
         donor_tissue = ast.literal_eval(donor['tissue_type'])
@@ -103,8 +104,10 @@ def aggregate_data(id, donor_list_path, recipient_list_path):
         exp_survival_time = 500
 
         aggregated_data["Donors"].append({
-            "Recipient_id": recipient_ID,
-            "Donor_id": donor_id,
+            "Recipient ID": recipient_ID,
+            "Recipient Name": rows_recipients['recipient_name'].values[0],
+            "Donor ID": donor_ID,
+            "Donor Name": donor_name,
             "HLA Match": HLA_match,
             "CMV Serostatus": CMV_Serostatus,
             "Donor Age Group": donor_age_group,
@@ -116,8 +119,10 @@ def aggregate_data(id, donor_list_path, recipient_list_path):
     aggregated_data = pd.DataFrame(aggregated_data["Donors"]) if aggregated_data["Donors"] else pd.DataFrame()
     if not aggregated_data.empty:
         aggregated_data = aggregated_data[[
-            "Recipient_id",
-            "Donor_id",
+            "Recipient ID",
+            "Recipient Name",
+            "Donor ID",
+            "Donor Name",
             "HLA Match",
             "CMV Serostatus",
             "Donor Age Group",

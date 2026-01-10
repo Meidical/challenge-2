@@ -13,7 +13,6 @@ if PARENT_DIR not in sys.path:
 
 from AHP.AHP import calculate_ahp_weights_BM
 
-
 # Funções auxiliares
 
 # Normalização da matriz
@@ -145,14 +144,39 @@ def similarities_to_PIS(positive_separation, negative_separation, verbose=False)
 
 def calculate_topsis(dataframe, stem_cell_source, verbose=False):
 
-    mydata = dataframe.loc[:, ['Recipient_id', 'Donor_id', 'HLA Match', 'CMV Serostatus', 'Donor Age Group', 'Gender Match', 'ABO Match', 'Expected Survival Time']]
+    # Normalize column names so we can accept both spaced and underscored IDs
+    column_aliases = {
+        'Recipient ID': 'recipient_ID',
+        'Donor ID': 'donor_ID',
+    }
+    normalized_df = dataframe.rename(columns=column_aliases)
+
+    required_columns = [
+        'recipient_ID',
+        'donor_ID',
+        'HLA Match',
+        'CMV Serostatus',
+        'Donor Age Group',
+        'Gender Match',
+        'ABO Match',
+        'Expected Survival Time',
+        'Donor Name',
+        'Recipient Name',
+    ]
+
+    missing = [col for col in required_columns if col not in normalized_df.columns]
+    if missing:
+        raise KeyError(f"Missing required columns for TOPSIS: {missing}. Present columns: {list(normalized_df.columns)}")
+
+    # Vou ordenar o dataframe pela ordem conveniente
+    mydata = normalized_df.loc[:, required_columns].copy()
 
     # Estrutura do DataFrame necessária para o funcionamento do TOPSIS:
-    # |─────────────|───────────|───────────|─────────────────|───────────────────|───────────────|────────────|──────────────────────────|
-    # |Recipient_id │ Donor_id  │ HLA Match │ CMV Serostatus  │  Donor Age Group  │ Gender Match  │ ABO Match  │ Expected Survival Time   │
-    # ├─────────────┼───────────┼───────────┼─────────────────┼───────────────────┼───────────── ─┼────────────┤──────────────────────────┤        
-    # |    str      │ str       │ int       │ int             │ int               │ int           │ int        │ int                      │
-    # └─────────────┴───────────┴───────────┴─────────────────┴───────────────────┴───────────── ─┴────────────┘──────────────────────────┘
+    # |─────────────|───────────|───────────|─────────────────|───────────────────|───────────────|────────────|──────────────────────────|-----------|--------------|
+    # |recipient_ID │ donor_ID  │ HLA Match │ CMV Serostatus  │  Donor Age Group  │ Gender Match  │ ABO Match  │ Expected Survival Time   │Donor Name |Recipient Name|
+    # ├─────────────┼───────────┼───────────┼─────────────────┼───────────────────┼───────────── ─┼────────────┤──────────────────────────┤-----------|--------------|        
+    # |    str      │ str       │ int       │ int             │ int               │ int           │ int        │ int                      │str        |str           |
+    # └─────────────┴───────────┴───────────┴─────────────────┴───────────────────┴───────────── ─┴────────────┘──────────────────────────┘-----------|--------------|
 
 
     # Atribuição das preferências dos critérios
@@ -176,8 +200,9 @@ def calculate_topsis(dataframe, stem_cell_source, verbose=False):
     else:
         raise ValueError("Tipo de tecido inválido. Use 'BM' para medula óssea ou 'PBSC' para sangue.")
 
-    # Prepara matriz
-    matrix = mydata.iloc[:, 2:].values.astype(int) #Exclui as duas primeiras colunas (Donor_id e Recipient_id)
+    # Prepara matriz apenas com os critérios numéricos
+    criteria_cols = ['HLA Match', 'CMV Serostatus', 'Donor Age Group', 'Gender Match', 'ABO Match', 'Expected Survival Time']
+    matrix = mydata.loc[:, criteria_cols].astype(float).to_numpy()
     
     # Chama as funções auxiliares
     norm_matrix = normalize_matrix(matrix, verbose=verbose)
@@ -187,10 +212,16 @@ def calculate_topsis(dataframe, stem_cell_source, verbose=False):
     scores = similarities_to_PIS(pos_sep, neg_sep, verbose=verbose)
     
     # Cria resultado final
-    first_column = mydata.iloc[:, 0]
-    second_column = mydata.iloc[:, 1]
+    recipient_id_column = mydata["recipient_ID"]
+    donor_id_column = mydata["donor_ID"]
+    donor_name_column = mydata["Donor Name"]
+    recipient_name_column = mydata["Recipient Name"]
+
     results_series = pd.Series(scores, name='TOPSIS Score')
-    df_TOPSIS = pd.concat([first_column, second_column, results_series], axis=1)
+    df_TOPSIS = pd.concat([recipient_id_column, donor_id_column, results_series, donor_name_column, recipient_name_column], axis=1)
+    data=normalized_df.copy().drop(columns=['recipient_ID', 'donor_ID', 'Donor Name', 'Recipient Name'])
+    print("aqui", data.columns)
+    df_TOPSIS = pd.concat([df_TOPSIS, data], axis=1)
     df_TOPSIS = df_TOPSIS.sort_values(by='TOPSIS Score', ascending=False)
     df_TOPSIS.rename(columns={'TOPSIS Score': 'TOPSIS Rank'}, inplace=True)
     print("\n=== TOPSIS Results ===")
