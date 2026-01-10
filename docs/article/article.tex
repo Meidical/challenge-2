@@ -103,11 +103,17 @@
         CMV              & Cytomegalovirus                                     \\
         EBMT             & European Group for Blood and Marrow Transplantation \\
         EHR              & Electronic Health Record                            \\
+        ENET             & Elastic-Net                                         \\
+        ET               & Extra Trees                                         \\
+        GAN              & Generative Adversarial Network                      \\
         GVHD             & Graft-versus-Host Disease                           \\
         HLA              & Human Leukocyte Antigen                             \\
         HSCT             & Hematopoietic Stem Cell Transplantation             \\
+        LightGBM         & Light Gradient Boosting Machine                     \\
         ML               & Machine Learning                                    \\
         MADM             & Multiple Attribute Decision Making                  \\
+        SMOTE            & Synthetic Minority Over-sampling Technique          \\
+        XGBoost          & eXtreme Gradient Boosting                           \\
         \hline
     \end{tabular}
 \end{table}
@@ -259,7 +265,15 @@ Feature Engineering is being performed to better encode significant relationship
 
 All feature engineering steps were integrated into a preprocessing pipeline
 
+\subsection{Oversampling}
+
 \section{Experiments}
+A total of around 80 experiments with different models and model configurations were made. To facilitate this, MLflow was used for tracking and result reproducibility across model configurations.\cite{Zaharia2018MLflow}
+
+\subsection{Survival Classification}
+As for survival classification, several model families were tested. All models were tested in three different configurations: default parameters, tuned and tuned with SMOTE. In addition to that, the best models were also tested using GANs with different combinations of epochs and sample sizes.
+
+First, linear classification models like the logistic regression were tested as a baseline. Tree ensemble models like the Random Forest (RR) and the Extra Trees (ET), and gradient boosting models like the XGBoost (XGB) and the LightGBM (LGBM) were also tested. ADTrees and 
 
 \section{Discussion}
 
