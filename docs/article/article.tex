@@ -1,0 +1,274 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+\title{Donor-Recipient Matching and Allocation
+    in Pediatric Bone-Marrow Transplantation\\}
+
+\author{
+    \fontsize{10pt}{11pt}\selectfont
+    \begin{tabular}{ccc}
+        \begin{tabular}{c}
+            Danilo Silva                                   \\
+            \textit{Department of Artificial Intelligence} \\
+            \textit{Polytechnic School of Porto}           \\
+            Porto, Portugal                                \\
+            1250424@isep.ipp.pt
+        \end{tabular}
+         &
+        \begin{tabular}{c}
+            Luís Magalhães                                 \\
+            \textit{Department of Artificial Intelligence} \\
+            \textit{Polytechnic School of Porto}           \\
+            Porto, Portugal                                \\
+            1100628@isep.ipp.pt
+        \end{tabular}
+         &
+        \begin{tabular}{c}
+            José Domingues                                 \\
+            \textit{Department of Artificial Intelligence} \\
+            \textit{Polytechnic School of Porto}           \\
+            Porto, Portugal                                \\
+            1000984@isep.ipp.pt
+        \end{tabular}
+        \\[6ex]
+        \begin{tabular}{c}
+            Ricardo Sousa                                  \\
+            \textit{Department of Artificial Intelligence} \\
+            \textit{Polytechnic School of Porto}           \\
+            Porto, Portugal                                \\
+            1201856@isep.ipp.pt
+        \end{tabular}
+         &
+        \begin{tabular}{c}
+            Tomás Pereira                                  \\
+            \textit{Department of Artificial Intelligence} \\
+            \textit{Polytechnic School of Porto}           \\
+            Porto, Portugal                                \\
+            1210830@isep.ipp.pt
+        \end{tabular}
+    \end{tabular}
+}
+
+\maketitle
+
+\begin{abstract}
+    Pediatric allogeneic
+    hematopoietic stem cell transplantation (HSCT) is a potentially
+    curative therapy for malignant and non-malignant diseases, but
+    outcomes depend strongly on donor-recipient compatibility and graft
+    characteristics. Donor selection is therefore a high-stakes, timesensitive decision where clinicians must balance immunogenetic risk
+    against urgency and donor availability.
+    This work proposes a two-stage decision-support pipeline aligned
+    with two course modules. In the first stage (Planning and DecisionMaking), a multi-criteria decision-making model integrates
+    immunogenetic compatibility and clinical constraints to structure the
+    allocation problem. In the second stage (Machine Learning), a
+    predictive model estimates recipient survival time for each feasible
+    donor-recipient pairing using pre-transplant donor, recipient, and graft
+    variables from a published pediatric unrelated-donor cohort. Predicted
+    outcomes are then incorporated as an explicit criterion within the
+    multi-criteria framework to produce an ordered list of candidate
+    matches for physician review. The overall goal is to support
+    transparent, reproducible donor-recipient matching and allocation
+    decisions in pediatric HSCT.\\
+\end{abstract}
+
+\begin{IEEEkeywords}
+    Pediatric hematopoietic stem cell transplantation,
+    donor-recipient matching, HLA compatibility, machine learning, data-driven decision support, multi-criteria decision making.
+\end{IEEEkeywords}
+
+\begin{table}[htbp]
+    \caption{List of acronyms and abbreviations}
+    \label{tab:acronyms}
+    \centering
+    \begin{tabular}{ll}
+        \hline
+        \textbf{Acronym} & \textbf{Meaning}                                    \\
+        \hline
+        ADTree           & Alternating Decision Tree                           \\
+        ANN              & Artificial Neural Networks                          \\
+        CMV              & Cytomegalovirus                                     \\
+        EBMT             & European Group for Blood and Marrow Transplantation \\
+        EHR              & Electronic Health Record                            \\
+        GVHD             & Graft-versus-Host Disease                           \\
+        HLA              & Human Leukocyte Antigen                             \\
+        HSCT             & Hematopoietic Stem Cell Transplantation             \\
+        ML               & Machine Learning                                    \\
+        MADM             & Multiple Attribute Decision Making                  \\
+        \hline
+    \end{tabular}
+\end{table}
+
+\section{Introduction}
+Allogeneic hematopoietic stem cell transplantation (HSCT) is an established therapeutic option for a wide range of malignant and non-malignant hematologic conditions in pediatric populations and often represents the standard of care in high-risk cases; however, it carries substantial clinical risks, such as graft-versus-host disease and transplant-related mortality, which necessitate careful donor selection \cite{Diaz2024}. In clinical practice, transplant success is tightly linked to donorrecipient compatibility and to graft characteristics (the material transplanted from the donor to the recipient, such as CD34$^{+}$ and CD3$^{+}$ cells), because immunologic disparity can increase complications such as graft-versus-host disease (GVHD), graft failure, and transplant-related mortality \cite{Tiercy2016}. Donor selection is typically guided by high-resolution Human Leukocyte Antigen (HLA) matching and additional donor/recipient factors (e.g., Cytomegalovirus (CMV) status, age, stem cell source - bone marrow or peripheral blood stem cells), while acknowledging that not all patients have access to an ideal matched sibling and that alternative donor options are frequently required \cite{Tiercy2016}. Beyond “match counts,” functional and locus-specific approaches, referring to specific genomic positions associated with immunogenetic variability, can refine immunological risk; for example, classification of HLA-DPB1 mismatches into permissive vs non-permissive groups has been associated with clinically relevant differences in outcomes \cite{Fleischhauer2012}. In parallel, the availability of large transplantation registries and richer clinical data has motivated machine learning (ML) approaches to outcome prediction (e.g., early mortality, GVHD risk). Prior work has shown that ML can produce clinically meaningful risk stratification, but performance and generalizability depend heavily on data preparation choices and robust validation designs \cite{Shouval2014}, \cite{Gupta2020}, \cite{Shouval2015}, \cite{Arai2019}, \cite{Tang2020}. \\
+
+\textbf{Problem statement:} Despite established donor selection principles, there is still a lack of integrated, transparent frameworks that (i) formalize donor-recipient allocation under multiple clinical criteria and (ii) incorporate data-driven outcome predictions using only pre-decision variables. Proposed solution: This project proposes a two-stage decision-support system. First, a planning and decision-making layer structures donor allocation using a multi-criteria decisionmaking framework. Second, a machine learning model predicts survival time for each feasible donor-recipient pairing using a dataset \cite{Sikora2010} derived from a published pediatric unrelated-donor cohort \cite{Kalwak2010}. The predicted outcomes are incorporated as one of the criteria in the multi-criteria model, producing a ranked list of feasible matches for clinical review. \\
+
+\textbf{Proposed solution:} This project proposes a two-stage decision-support system. First, a planning and decision-making layer structures donor allocation using a multi-criteria decisionmaking framework. Second, a machine learning model predicts survival time for each feasible donor-recipient pairing using a dataset \cite{Sikora2010} derived from a published pediatric unrelated-donor cohort \cite{Kalwak2010}. The predicted outcomes are incorporated as one of the criteria in the multi-criteria model, producing a ranked list of feasible matches for clinical review.
+
+\section{State-of-the-Art}
+
+Allogeneic hematopoietic stem cell transplantation (HSCT) stands as the unique curative option for various pediatric patients with malignant and non-malignant hematologic diseases \cite{Diaz2024}. The success of the transplant critically depends on Human Leukocyte Antigen (HLA) compatibility between the donor and recipient. Although the gold standard is a 10/10 genotypic match (HLA-A, -B, -C, -DRB1, -DQB1), approximately 70\% of patients do not have a compatible family donor, necessitating the use of unrelated or haploidentical donors \cite{Shouval2015}.
+
+The complexity of immunogenetics, with thousands of known HLA alleles \cite{Shouval2015}, combined with the heterogeneity of clinical data, has rendered traditional statistical approaches (such as Cox regression) insufficient for capturing complex non-linear interactions \cite{Shouval2014}. Consequently, the application of Machine Learning (ML) algorithms has emerged as a vital tool for predicting outcomes (survival, Graft-versus-Host Disease (GVHD)) and supporting donor allocation \cite{Shouval2014}, \cite{Gupta2020}.
+
+This document reviews the literature, focusing on data preparation and model validation methodologies.
+
+\subsection{Data preparation and feature engineering}
+
+The quality of ML models depends intrinsically on data preparation. The literature identifies three critical vectors in this phase:\\
+
+\begin{enumerate}
+    \item \textbf{HLA resolution and complexity} high-resolution typing (allelic level) is fundamental. Lee et al. demonstrated in a landmark study that high-resolution matching at HLA-A, -B, -C, and -DRB1 is associated with higher survival rates \cite{Lee2007}. Simple binary categorization (matched/mismatched) is insufficient; recent models incorporate the distinction between ``permissive'' and ``non-permissive'' mismatches, particularly at the HLA-DPB1 locus, based on T-cell epitopes \cite{Fleischhauer2012}. Fleischhauer et al. validated that non-permissive mismatches significantly increase mortality, making this a crucial feature for predictive algorithms [3]. \\
+
+    \item \textbf{Specific clinical and pediatric variables} beyond HLA, feature engineering must include donor and graft-specific factors. Kałwak et al., in a study focused on pediatrics, highlighted that higher doses of CD34\textsuperscript{+} and CD3\textsuperscript{+} cells in the graft promote better long-term survival without increasing the risk of severe GVHD \cite{Kalwak2010}. The inclusion of these quantitative biological variables enriches ML models. Additionally, Tang et al. innovated by using longitudinal vital sign data (e.g., temperature, blood pressure) extracted from Electronic Health Records (EHR), demonstrating that temporal trends (slopes) are stronger predictors of acute GVHD than static measurements \cite{Tang2020}. \\
+
+    \item \textbf{Missing data treatment and feature selection} real-world databases, such as those from the EBMT (European Group for Blood and Marrow Transplantation), contain noise and missing data. Shouval et al. discuss the need for robust preprocessing, including imputation and discretization \cite{Shouval2014}. Feature selection is critical to avoid hyper-dimensionality. For instance, in a data mining study involving 28,236 patients, the Alternating Decision Tree (ADTree) algorithm automatically selected 10 out of 20 possible variables, eliminating redundancies (e.g., combining donor/recipient Cytomegalovirus (CMV) serostatus into a single interaction variable) \cite{Shouval2015}.\\
+\end{enumerate}
+
+
+\subsection{ML models and validation strategies}
+
+The transition from classical statistical models to ML requires rigorous validation to avoid overfitting, where the model memorizes training data but fails to generalize \cite{Shouval2014}.
+
+\begin{enumerate}
+    \item \textbf{Predictive algorithms} - recent literature favors algorithms that balance accuracy with clinical interpretability:
+
+          \begin{itemize}
+              \item \textbf{Decision trees and ensemble methods:} Shouval et al. and Arai et al. successfully used the ADTree algorithm to predict mortality and GVHD, respectively \cite{Shouval2015}, \cite{Arai2019}. ADTree was preferred over Artificial Neural Networks (ANN) or Random Forests because it allows for the visualization of decision rules and interactions (e.g., the impact of disease stage varies by age), whereas ``black box'' models hide this logic \cite{Shouval2015}, \cite{Arai2019}.
+
+              \item \textbf{Penalized logistic regression:} Tang et al. used L2 regularization to handle collinearity in longitudinal vital sign data, outperforming baseline models that used only static characteristics \cite{Tang2020}.\\
+          \end{itemize}
+
+    \item \textbf{Validation methodologies} - robust validation is consistent across high-quality studies:
+
+          \begin{itemize}
+              \item \textbf{Train/test split:} Arai et al. randomly divided a cohort of 26,695 patients into training (70\%) and validation (30\%) sets. The trained model was tested on the validation cohort, demonstrating clear risk stratification (hazard ratio 2.57 for high risk vs. low risk) \cite{Arai2019}.
+
+              \item \textbf{Cross-validation:} Both Shouval et al. and Gupta et al. advocate for the use of 10-fold cross-validation on the training set to optimize hyperparameters prior to final testing \cite{Shouval2014}, \cite{Shouval2015}.
+
+              \item \textbf{Calibration:} accuracy (AUC) is not the only metric. Shouval et al. emphasize the importance of calibration (agreement between predicted and observed probability), demonstrating excellent consistency in their 100-day mortality model \cite{Shouval2014}.\\
+          \end{itemize}
+\end{enumerate}
+
+
+\subsection{From prediction to allocation}
+
+While ML models provide a risk score (prediction), clinical decision-making requires selecting the best donor among several available options (allocation). The literature suggests a ``prediction-to-decision'' gap \cite{Shouval2014}. Multiple Attribute Decision Making (MADM) methodologies, such as TOPSIS (Technique for Order Preference by Similarity to Ideal Solution), described by Tzeng \& Huang, allow for the integration of ML predictions (as criteria) into an ordered ranking of alternatives \cite{Tzeng2011}. This hybrid approach (ML to predict outputs, TOPSIS to rank candidates) represents an improvement for clinical decision support systems, transforming raw probabilities into actionable recommendations.
+
+\section{Methodology}
+\subsection{Data Cleaning}
+The used dataset called "Bone Marrow Transplant: children” contained 187 children and adolescents between the 2000 and 2008 \cite{Sikora2010}, derived from a published pediatric unrelated-donor cohort \cite{Kalwak2010}. Besides the fact that there are few rows for generalization, the dataset contains a lot of attributes that are very helpful in understanding the factors that influence matching and survivability of the recipient.\\
+
+\begin{table}[htbp]
+\caption{Clinical, Matching, Transplantation, and Outcome Attributes}
+\label{tab:all_attributes}
+\centering
+\begin{tabular}{l p{0.62\columnwidth}}
+\hline
+\textbf{Attribute} & \textbf{Description} \\
+\hline
+
+\multicolumn{2}{l}{\textbf{Donor-specific attributes}} \\
+donor\_age & Refers to the donor age at donation \\
+donor\_age\_below\_35 & 35 years cutoff age that has significantly lower risk of grade II to IV acute GVHD and lower likelihood of non-relapse mortality with miss-matched recipients \cite{Nagler2024} \\
+donor\_ABO & The blood type of the donor \\
+donor\_CMV & Presence of cytomegalovirus infection. A virus that is harmless and asymptomatic to most people but can be life-threatening for people with compromised immune systems \\
+\hline
+
+\multicolumn{2}{l}{\textbf{Recipient-specific attributes}} \\
+recipient\_age & The donor age at transplant \\
+recipient\_age\_below\_10 & 10 years cutoff \\
+recipient\_age\_int & Stores an age bin text \\
+recipient\_gender & The gender of the recipient \\
+recipient\_body\_mass & The body mass of the recipient \\
+recipient\_ABO & The blood type of the recipient \\
+recipient\_rh & The rh of the recipient's blood \\
+recipient\_CMV & Presence of cytomegalovirus infection \\
+disease & Type of disease \\
+disease\_group & Malignant disease or not \\
+risk\_group & The explicit meaning is still to be discovered, but it's assumed to be a value based in disease and disease status to categorize patients into 2 risk groups with significantly different overall survival and progression-free survival on the basis of primarily differences in the relapse risk \cite{Armand2012} \\
+\hline
+
+\multicolumn{2}{l}{\textbf{Matching-related attributes}} \\
+gender\_match & Checks if female donor to male recipient or any other case \\
+ABO\_match & If blood types are compatible \\
+CMV\_status & Level of serological compatibility \\
+HLA\_match & Allele level donor-recipient matching \\
+HLA\_mismatch & If HLA match if superior 8 alleles \\
+antigen & Difference of antigens between donor and recipient \\
+allel & Difference of alleles between donor and recipient \\
+HLA\_group\_1 & Description of donor-recipient matching/mismatching \\
+\hline
+
+\multicolumn{2}{l}{\textbf{Transplantation-related attributes}} \\
+stem\_cell\_source & Where the stem cells were obtained \\
+tx\_post\_relapse & If it is the second transplant done (after relapse) \\
+CD34\_x1e6\_per\_kg & The CD34$^{+}$ cell dose ($10^{6}$) per kg of recipient body weight \\
+CD3\_x1e8\_per\_kg & The CD3$^{+}$ cell dose ($10^{8}$) per kg of recipient body weight \\
+CD3\_to\_CD34\_ratio & The CD3$^{+}$ to CD34$^{+}$ ratio \\
+ANC\_recovery & Time in days to achieve an absolute neutrophil count $> 0.5 \times 10^{9}$/L for 3 consecutive days \\
+PLT\_recovery & Time in days to achieve an absolute platelet count $> 0.5 \times 10^{9}$/L for 3 consecutive days \\
+acute\_GvHD\_II\_III\_IV & If the recipient developed acute GVHD stage II, III or IV \\
+acute\_GvHD\_III\_IV & If the recipient developed acute GVHD stage III or IV \\
+time\_to\_acute\_GvHD\_III\_IV & Time in days that took the recipient to develop acute GVHD stage III or IV \\
+extensive\_chronic\_GvHD & Time in days that took the recipient to develop extensive chronic GVHD \\
+\hline
+
+\multicolumn{2}{l}{\textbf{Survivability attributes}} \\
+relapse & If the disease has recurred \\
+survival\_time & Time in days the recipient survived from transplant to death (if dead); time in days the recipient is alive from transplantation to time of data collection (if alive) \\
+survival\_status & If the recipient is dead or alive \\
+\hline
+
+\end{tabular}
+\end{table}
+
+There are some problems with this dataset that will need to be addressed. First handle “?”, missing and other strange values in donor\_CMV, CD3\_x1e8\_per\_kg, CD3\_to\_CD34\_ratio, ANC\_recovery, PLT\_recovery, time\_to\_acute\_GvHD\_III\_IV, extensive\_chronic\_GvHD, HLA\_match with caution. Analize the usefulness in outcome of some abstracted attributes like donor\_age\_belo\_35, recipient\_age\_below\_10, HLA\_mismatch. Encode various categorical values with onehot-encoding since there is a small range of categorical values. Creation of synthetic data attributes for tissue type and donor gender to make possible HLA and gender match calculation during multi-criteria decision making. Check and handle bias and minority classes in outcome features using stratification and oversampling. Handle highly correlated features by removing the less performing ones, simplifying the generalization with few data rows.
+
+The dataset provides a lot of data to better understand the match and transplant variables influence in survivability. It will be useful for finding correlations and importance of each attribute during the allocation fase, but will need to be simplified in order to help the model predict and generalize better with the small sample size.
+
+\subsection{Data Exploration}
+
+One of the first steps in data exploration is to analyze if the target data is biased in any way. This can be done by checking the proportions of the \texttt{survival\_status} attribute. In this dataset, 54\% of people are alive, while 45\% are deceased, which means that the target is well balanced. Looking at the data, a possible important factor is the correlation between the ages of the recipient and the donor. Fig.\ref{fig:age_correlation} shows the correlation between the pairs:
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/age_correlation.png}
+    \caption{Age correlation of donor-recipient pairs}
+    \label{fig:age_correlation}
+\end{figure}
+
+This graph shows that a lot of transplants are made with donor-recipient pairs where the donor is between the ages of 25--45 years old and the recipient between 5--15 years old. Another thing to explore could be the correlation between the age gap of the pair. However, analysis suggests that the donor-recipient age gap doesn't have a strong enough correlation with either survival time or survival status of the recipient. Another attribute worth exploring is how blood type compatibility affects survival. Exploratory analysis showed that, while in case there is a blood type match the rate of survival is very close to 50\%, in case of a blood type mismatch the rate of survival drops to close to 40\%, showing a possible small correlation between these attributes. Gender matching can also be an important factor to consider in compatibility; however, analysis shows that gender matching alone isn't sufficient to form a correlation.
+
+\subsection{Feature Engineering}
+Feature Engineering is being performed to better encode significant relationships and reduce ambiguity in the raw data. Testing will be performed with various models in order to understand which changes help the model create better correlations and thus achieve better results. For example, certain features can be derived from existing ones, like the \texttt{age\_gap}, calculated using the absolute difference between the recipient-donor pair. Missing values were handled using imputed data relevant to each feature, and an explicit missingness indicator. Categorical data was encoded using one hot encoding or ordinal encoding when the data was binary. 
+
+All feature engineering steps were integrated into a preprocessing pipeline
+
+\section{Experiments}
+
+\section{Discussion}
+
+\section{Conclusion}
+
+\section*{Acknowledgment}
+The authors thank the lecturers of the Master in Artificial Intelligence Engineering (MEIA) at the Porto School of Engineering (ISEP) for the guidance and support provided throughout the development of this project.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}
