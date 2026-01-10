@@ -5,6 +5,7 @@ import mlflow
 from mlflow.models import infer_signature
 import numpy as np
 import pandas as pd
+import bentoml
 from imblearn.over_sampling import SMOTE, RandomOverSampler
 from imblearn.pipeline import Pipeline
 from sklearn.base import clone
@@ -247,6 +248,24 @@ def tune_model(
     return gs
 
 
+def import_model(name, model_uri):
+    model = bentoml.mlflow.import_model(name, model_uri)
+    model_name = ":".join([model.tag.name, model.tag.version])
+    return model_name
+
+
+def load_model(model_name=None):
+    if model_name is None:
+        model_name = model_name
+    bento_model = bentoml.mlflow.load_model(model_name)
+    return bento_model
+
+
+def predict(bento_model, testdata):
+    prediction = bento_model.predict(testdata)
+    return prediction
+
+
 def run_experiment(
     experiment,
     X_train,
@@ -363,11 +382,13 @@ def run_experiment(
 
         # Log the model
         signature = infer_signature(X_train, y_pred_train)
-        mlflow.sklearn.log_model(
+        mlflow_model = mlflow.sklearn.log_model(
             sk_model=best_model,
             artifact_path="model",
             signature=signature
         )
+
+        import_model('bone_marrow_model', mlflow_model.model_uri)
 
     return best_model.predict(X_train)
 
@@ -412,8 +433,6 @@ def run_mlflow(model):
         break
 
 
-print(os.getcwd())
-
 dataset = load_dataset(
     "/Users/luismagalhaes/MEI/challenge-2/mlflow/data/bone_narrow_raw.xlsx")
 
@@ -422,3 +441,5 @@ mlflow.set_tracking_uri("http://127.0.0.1:5000")
 #           X_test, y_clf_train, y_clf_test)
 
 run_mlflow("regression")
+
+b_model = load_model("regression_model")
