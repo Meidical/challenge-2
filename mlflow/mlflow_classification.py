@@ -481,7 +481,7 @@ def run_mlflow(task):
                     X_test_reg = X_test
 
                 # Run regression experiment
-                run_experiment(
+                experiment_model = run_experiment(
                     experiment=exp,
                     X_train=X_train_reg,
                     y_train=y_reg_train,
@@ -492,7 +492,7 @@ def run_mlflow(task):
 
             else:
 
-                run_experiment(
+                experiment_model = run_experiment(
                     experiment=exp,
                     X_train=X_train,
                     y_train=y_clf_train,
@@ -500,6 +500,8 @@ def run_mlflow(task):
                     y_test=y_clf_test,
                     task=task,
                 )
+
+            import_model('bone_marrow_model', experiment_model.model_uri)
 
 
 print(os.getcwd())
