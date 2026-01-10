@@ -268,12 +268,58 @@ All feature engineering steps were integrated into a preprocessing pipeline
 \subsection{Oversampling}
 
 \section{Experiments}
-A total of around 80 experiments with different models and model configurations were made. To facilitate this, MLflow was used for tracking and result reproducibility across model configurations.\cite{Zaharia2018MLflow}
+The section evaluates the performance of different ML models for the prediction of both a classification target and a regression target and analyzes the impact of feature engineering, hyperparameter tuning and data augmentation techniques.
+
+Approximately 100 experiments with different models and model configurations were made. To facilitate this, MLflow was used for tracking and result reproducibility across model configurations.\cite{Zaharia2018MLflow}
 
 \subsection{Survival Classification}
-As for survival classification, several model families were tested. All models were tested in three different configurations: default parameters, tuned and tuned with SMOTE. In addition to that, the best models were also tested using GANs with different combinations of epochs and sample sizes.
+For survival classification, several model families were tested. All models were tested in three different configurations: default parameters, tuned and tuned with SMOTE. Additionally, the best models were also tested using GANs with different combinations of epochs and synthetic sample sizes. Different number of training cross validation folds and train-test splits were also considered. As metrics, the F1-score on the test set was the main metric used for comparison but several other metrics were also used such as the accuracy, precision, recall and cross-validation F1-score of the train set.
 
-First, linear classification models like the logistic regression were tested as a baseline. Tree ensemble models like the Random Forest (RR) and the Extra Trees (ET), and gradient boosting models like the XGBoost (XGB) and the LightGBM (LGBM) were also tested. ADTrees and 
+Linear classification models, including the Logistic Regression were evaluated as a baseline. Tree ensemble models like the Random Forest (RF) and the Extra Trees (ET), and gradient boosting models like the XGBoost (XGB) and the LightGBM (LGBM) were also tested. Alternating Decision Trees (ADTrees) and Support Vector Machines (SVMs) were also considered.
+
+Out of all the experiments, the tuned Random Forest Classifier with GAN-augmented data obtained the best result, with an F1-score of 0.62 on the test set, a precision of 0.57, a recall of 0.61 and an accuracy of 0.62. However, the model that, on average, achieved the best results was the Logistic Regression, having the base untuned model ranked as the best model not utilizing GANs.
+
+It was observed that SMOTE oversampling for the minority class didn't significantly help in predicting the survival of the patient, having the models with SMOTE achieved an F1-score on the test set of 0.45, and 0.44 without, with precision and recall being very similar. On the other hand, GAN oversampling improved significantly the results, reaching an average F1-score on the test set of 0.50, against 0.44 without. 
+
+On average, the tuned models without oversampling had better overall performance than the untuned models, however, it is important to note that some untuned models performed significantly better than their tuned conter-parts, even when confining their grid search, as can be seen in Fig. \ref{fig:tune_vs_untune}.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/tune_vs_untune.png}
+    \caption{Performance of tuned (no oversampling) vs. untuned models}
+    \label{fig:tune_vs_untune}
+\end{figure}
+
+Another observation was made when comparing the cross-validation F1-Score on the train set with the test set. As can be seen in the sample of parallel coordinates plot in Fig. \ref{fig:train_vs_test}, 12 random experiments were chosen, and compared. It was observed that experiments that scored a high F1-score on cross-validation with the train set performed consistently worse on the test set than those that scored a lower value.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/train_vs_test.png}
+    \caption{Comparison between train and test set performance across experiments}
+    \label{fig:train_vs_test}
+\end{figure}
+
+Some additional experiments were made on the best-performing models comparing different values for number of cross validation folds and train/test split ratios. It was observed that training the model with 5 folds and a test set size of 15\% of the total dataset yielded better results.
+
+\subsection{Survival Time Regression}
+
+To predict survival time tests were performed on largely the same model families as the step above. For the linear models family, ridge regression and elastic-net were tested. All models were tested with and without the addition of the classification variable predicted by the best classification model, tuned and untuned. Additionally, the classification variable was tested being predicted as a binary variable or as a probability. Metrics such as the Root Mean Squared Error (RMSE), Mean Average Error (MAE) and the coefficient of determination ($R^2$), were saved for both train and test sets and used to compare the regression models. A baseline RMSE value was also set (RMSE = 913), which would represent a simple model in which every patient is given the average survival time.
+
+As can be seen in Fig. \ref{fig:use_clf}, using classification as a feature to predict regression considerably improved model performance.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/classification_influence.png}
+    \caption{Use of classification as feature for regression}
+    \label{fig:use_clf}
+\end{figure}
+
+Using the red line to indicate the baseline level, the RMSE of the models not using classification were all observed to be above that level. However, by adding the survival status as a feature the RMSE was cut almost in half.
+Moreover, predicting the the survivability as a probability instead of a binary feature produced mixed results across models and configurations, with tree and linear models performing particularly bad, however, gradient boosting models like LightGBM and XGBoost had better results than the same model with a binary classification feature.
+
+As with classification, different numbers of cross-validation folds were tested and 5 folds was observed to produce the best results.
+
+In the end, the regression model that preformed best was a tuned LightGBM model using survival status as a probability.
+
 
 \section{Discussion}
 
