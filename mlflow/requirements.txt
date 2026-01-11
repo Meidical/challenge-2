@@ -12,3 +12,6 @@ torchaudio==2.8.0
 sdv
 xgboost
 lightgbm
+bentoml
+torch 
+transformers 

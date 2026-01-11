@@ -6,6 +6,7 @@ import mlflow
 from mlflow.models import infer_signature
 import numpy as np
 import pandas as pd
+import bentoml
 from imblearn.over_sampling import SMOTE, RandomOverSampler
 from imblearn.pipeline import Pipeline
 from sklearn.base import clone
@@ -22,6 +23,7 @@ from sdv.metadata import Metadata
 from sdv.sampling import Condition
 from mlflow_experiments import EXPERIMENTS, PARAM_GRIDS, MODEL_REGISTRY_CLASSIFICATION, MODEL_REGISTRY_REGRESSION
 from mlflow.tracking import MlflowClient
+
 
 def load_dataset(file_path: str):
     df = pd.read_excel(file_path)
@@ -86,7 +88,8 @@ def generate_gan(
             column_values={'is_dead': 1}
         )
 
-        synthetic = ctgan.sample_from_conditions(conditions=[alive_condition, dead_condition])
+        synthetic = ctgan.sample_from_conditions(
+            conditions=[alive_condition, dead_condition])
 
         X_synth = synthetic.drop(columns=["is_dead"])
         y_synth = synthetic["is_dead"]
@@ -115,6 +118,7 @@ def generate_gan(
 
     else:
         return X_train, y_train
+
 
 def build_preprocessor():
     bool_cols = [
@@ -266,6 +270,24 @@ def tune_model(
     return gs
 
 
+def import_model(name, model_uri):
+    model = bentoml.mlflow.import_model(name, model_uri)
+    model_name = ":".join([model.tag.name, model.tag.version])
+    return model_name
+
+
+def load_model(model_name=None):
+    if model_name is None:
+        model_name = model_name
+    bento_model = bentoml.mlflow.load_model(model_name)
+    return bento_model
+
+
+def predict(bento_model, testdata):
+    prediction = bento_model.predict(testdata)
+    return prediction
+
+
 def run_experiment(
     experiment,
     X_train,
@@ -325,7 +347,8 @@ def run_experiment(
 
     mlflow.log_params(experiment)
 
-    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42) if task == "classification" else RepeatedKFold(n_splits=n_splits, n_repeats=5, random_state=42)
+    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42) if task == "classification" else RepeatedKFold(
+        n_splits=n_splits, n_repeats=5, random_state=42)
 
     X_tr, y_tr = generate_gan(
         X_train=X_train,
@@ -352,26 +375,31 @@ def run_experiment(
         best_model = pipeline.fit(X_tr, y_tr)
 
     y_pred_train = best_model.predict(X_tr)
-    y_pred_cv = cross_val_predict(best_model, X_tr, y_tr, cv=cv, verbose=10, n_jobs=-1, method="predict")
+    y_pred_cv = cross_val_predict(
+        best_model, X_tr, y_tr, cv=cv, verbose=10, n_jobs=-1, method="predict")
     y_pred_test = best_model.predict(X_test)
 
     if task == "classification":
         # Metrics on train set
-        mlflow.log_metric("accuracy_train",accuracy_score(y_tr, y_pred_train))
-        mlflow.log_metric("f1_weighted_train", f1_score(y_tr, y_pred_train, average="weighted"))
+        mlflow.log_metric("accuracy_train", accuracy_score(y_tr, y_pred_train))
+        mlflow.log_metric("f1_weighted_train", f1_score(
+            y_tr, y_pred_train, average="weighted"))
 
         # Metrics on cv train set
-        mlflow.log_metric("accuracy_cv_train",accuracy_score(y_tr, y_pred_cv))
-        mlflow.log_metric("f1_weighted_cv_train", f1_score(y_tr, y_pred_cv, average="weighted"))
+        mlflow.log_metric("accuracy_cv_train", accuracy_score(y_tr, y_pred_cv))
+        mlflow.log_metric("f1_weighted_cv_train", f1_score(
+            y_tr, y_pred_cv, average="weighted"))
 
         # Metrics on test set
         mlflow.log_metric("accuracy_test", accuracy_score(y_test, y_pred_test))
-        mlflow.log_metric("f1_weighted_test", f1_score(y_test, y_pred_test, average="weighted"))
+        mlflow.log_metric("f1_weighted_test", f1_score(
+            y_test, y_pred_test, average="weighted"))
         mlflow.log_metric("recall_test", recall_score(y_test, y_pred_test))
-        mlflow.log_metric("precision_test", precision_score(y_test, y_pred_test))
+        mlflow.log_metric("precision_test",
+                          precision_score(y_test, y_pred_test))
 
     else:
-        
+
         # Train
         log_regression_metrics("train", y_tr, y_pred_train)
 
@@ -395,12 +423,14 @@ def run_experiment(
 
     return best_model
 
+
 def log_regression_metrics(prefix, y_true, y_pred):
     rmse = np.sqrt(mean_squared_error(y_true, y_pred))
     mae = mean_absolute_error(y_true, y_pred)
 
     mlflow.log_metric(f"{prefix}_rmse", rmse)
     mlflow.log_metric(f"{prefix}_mae", mae)
+
 
 def run_mlflow(task):
     X_train, X_test, y_reg_train, y_reg_test, y_clf_train, y_clf_test = split_data(
@@ -416,7 +446,8 @@ def run_mlflow(task):
 
                     # Get best classification model
                     client = MlflowClient()
-                    experiment = mlflow.get_experiment_by_name(f"bone-marrow-classification")
+                    experiment = mlflow.get_experiment_by_name(
+                        f"bone-marrow-classification")
 
                     runs = mlflow.search_runs(
                         experiment_ids=[experiment.experiment_id],
@@ -438,7 +469,8 @@ def run_mlflow(task):
                     X_test_reg = X_test.copy()
 
                     if exp["predict_proba"]:
-                        X_train_reg["is_dead"] = best_clf.predict_proba(X_train)[:,1]
+                        X_train_reg["is_dead"] = best_clf.predict_proba(X_train)[
+                            :, 1]
                     else:
                         X_train_reg["is_dead"] = best_clf.predict(X_train)
 
@@ -447,9 +479,9 @@ def run_mlflow(task):
                 else:
                     X_train_reg = X_train
                     X_test_reg = X_test
-                
+
                 # Run regression experiment
-                run_experiment(
+                experiment_model = run_experiment(
                     experiment=exp,
                     X_train=X_train_reg,
                     y_train=y_reg_train,
@@ -460,7 +492,7 @@ def run_mlflow(task):
 
             else:
 
-                run_experiment(
+                experiment_model = run_experiment(
                     experiment=exp,
                     X_train=X_train,
                     y_train=y_clf_train,
@@ -468,6 +500,8 @@ def run_mlflow(task):
                     y_test=y_clf_test,
                     task=task,
                 )
+
+            import_model('bone_marrow_model', experiment_model.model_uri)
 
 
 print(os.getcwd())
@@ -479,3 +513,5 @@ mlflow.set_tracking_uri("http://127.0.0.1:5000")
 mlflow.end_run()
 run_mlflow("classification")
 run_mlflow("regression")
+
+b_model = load_model("regression_model")
