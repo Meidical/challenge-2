@@ -1,0 +1,21 @@
+defaults:
+  - _self_
+
+task: classification
+
+model: rf
+tune: false
+smote: false
+gan: false
+
+cv:
+  folds: 5
+
+gan_params:
+  epochs: 300
+  gan_0: 50
+  gan_1: 50
+
+regression:
+  use_clf: false
+  predict_proba: true

@@ -1,19 +1,22 @@
 # Standard library imports
-import logging
 import os
+import subprocess
+import sys
 import tempfile
-import uuid
+import time
+import urllib.request
+import urllib.error
+
+# Third-party imports - Configuration
+import hydra
+from omegaconf import DictConfig
 
 # Third-party imports - Data manipulation
 import numpy as np
 import pandas as pd
 
 # Third-party imports - Machine Learning
-from sklearn.base import clone
 from sklearn.calibration import cross_val_predict
-from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.impute import SimpleImputer
 from sklearn.metrics import (
     accuracy_score,
     f1_score,
@@ -26,17 +29,12 @@ from sklearn.metrics import (
 from sklearn.model_selection import (
     GridSearchCV,
     KFold,
-    RandomizedSearchCV,
-    RepeatedKFold,
-    RepeatedStratifiedKFold,
     StratifiedKFold,
     train_test_split
 )
-from sklearn.pipeline import FunctionTransformer
-from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
 
 # Third-party imports - Imbalanced learning
-from imblearn.over_sampling import SMOTE, RandomOverSampler
+from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline as ImbPipeline
 
 # Third-party imports - Synthetic data generation
@@ -47,7 +45,6 @@ from sdv.single_table import CTGANSynthesizer
 # Third-party imports - MLflow
 import mlflow
 from mlflow.models import infer_signature
-from mlflow.tracking import MlflowClient
 
 # Third-party imports - BentoML
 import bentoml
@@ -60,6 +57,59 @@ from mlflow_experiments import (
     PARAM_GRIDS
 )
 from pre_processor import PreProcessor
+
+
+def check_mlflow_server(host="127.0.0.1", port=5000, timeout=2):
+    """Check if MLflow server is running"""
+    try:
+        url = f"http://{host}:{port}/health"
+        urllib.request.urlopen(url, timeout=timeout)
+        return True
+    except (urllib.error.URLError, urllib.error.HTTPError):
+        return False
+
+
+def start_mlflow_server(host="127.0.0.1", port=5000):
+    """Start MLflow tracking server in background"""
+    print(f"Starting MLflow server at {host}:{port}...")
+
+    # Start server in background
+    process = subprocess.Popen(
+        [
+            "mlflow", "server",
+            "--host", host,
+            "--port", str(port),
+            "--backend-store-uri", "sqlite:///mlflow.db",
+            "--default-artifact-root", "./mlruns"
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+
+    # Wait for server to be ready
+    max_attempts = 30
+    for attempt in range(max_attempts):
+        if check_mlflow_server(host, port):
+            print(
+                f"MLflow server started successfully at http://{host}:{port}")
+            return process
+        time.sleep(1)
+        print(
+            f"Waiting for MLflow server to start... ({attempt + 1}/{max_attempts})")
+
+    # If server didn't start, kill the process and raise error
+    process.kill()
+    raise RuntimeError("Failed to start MLflow server")
+
+
+def ensure_mlflow_running(host="127.0.0.1", port=5000):
+    """Ensure MLflow server is running, start it if not"""
+    if check_mlflow_server(host, port):
+        print(f"MLflow server is already running at http://{host}:{port}")
+        return None
+    else:
+        return start_mlflow_server(host, port)
 
 
 def load_dataset(file_path: str):
@@ -327,17 +377,9 @@ def run_experiment(
                           precision_score(y_test, y_pred_test))
 
     else:
-
-        # Train
         log_regression_metrics("train", y_tr, y_pred_train)
-
-        # CV
         log_regression_metrics("cv", y_tr, y_pred_cv)
-
-        # Test
         log_regression_metrics("test", y_test, y_pred_test)
-
-        # R² on test
         mlflow.log_metric("test_r2", r2_score(y_test, y_pred_test))
 
         # Baseline
@@ -362,89 +404,140 @@ def log_regression_metrics(prefix, y_true, y_pred):
     mlflow.log_metric(f"{prefix}_mae", mae)
 
 
-def run_mlflow(task):
+def build_run_name(exp, task):
+    parts = [exp["model"]]
+
+    if exp.get("tune"):
+        parts.append("tuned")
+    else:
+        parts.append("base")
+
+    if exp.get("smote"):
+        parts.append("smote")
+
+    if exp.get("gan"):
+        parts.append("gan")
+
+    if task == "regression" and exp.get("use_clf"):
+        parts.append("wclf")
+        if exp.get("predict_proba"):
+            parts.append("proba")
+
+    return "_".join(parts)
+
+
+def run_mlflow(df, cfg):
     X_train, X_test, y_reg_train, y_reg_test, y_clf_train, y_clf_test = split_data(
-        dataset)
-    mlflow.set_experiment(f"bone-marrow-{task}")
+        df)
 
-    best_run_id = None
+    mlflow.set_experiment(f"bone-marrow-{cfg.task}")
 
-    for exp in EXPERIMENTS[task]:
-        with mlflow.start_run(run_name=exp["name"]):
-            if task == "regression":
-                if exp["use_clf"]:
+    exp = {
+        "model": cfg.model,
+        "tune": cfg.tune,
+        "smote": cfg.smote,
+        "gan": cfg.gan,
+        "gan_epochs": cfg.gan_params.epochs,
+        "gan_0": cfg.gan_params.gan_0,
+        "gan_1": cfg.gan_params.gan_1,
+        "use_clf": cfg.regression.use_clf,
+        "predict_proba": cfg.regression.predict_proba,
+    }
 
-                    # Get best classification model
-                    experiment = mlflow.get_experiment_by_name(
-                        f"bone-marrow-classification")
+    run_name = build_run_name(exp, cfg.task)
 
-                    runs = mlflow.search_runs(
-                        experiment_ids=[experiment.experiment_id],
-                        filter_string="tags.task = 'classification'",
-                        order_by=["metrics.f1_weighted_test DESC"],
-                        max_results=1
-                    )
+    with mlflow.start_run(run_name=run_name):
 
-                    model_output = mlflow.get_run(
-                        runs.iloc[0].run_id).outputs.model_outputs[0]
-                    model_id = model_output.model_id
-                    model_path = f"mlflow-artifacts:/{experiment.experiment_id}/models/{model_id}/artifacts"
-                    best_clf = mlflow.sklearn.load_model(
-                        model_path
-                    )
+        # Log full Hydra config
+        mlflow.log_params({
+            "model": cfg.model,
+            "task": cfg.task,
+            "tune": cfg.tune,
+            "smote": cfg.smote,
+            "gan": cfg.gan,
+            "cv_folds": cfg.cv.folds,
+        })
 
-                    mlflow.set_tag("upstream_classifier_run", best_run_id)
+        if cfg.task == "regression" and cfg.regression.use_clf:
 
-                    X_train_reg = X_train.copy()
-                    X_test_reg = X_test.copy()
+            experiment = mlflow.get_experiment_by_name(
+                "bone-marrow-classification")
 
-                    if exp["predict_proba"]:
-                        X_train_reg["is_dead"] = best_clf.predict_proba(X_train)[
-                            :, 1]
-                    else:
-                        X_train_reg["is_dead"] = best_clf.predict(X_train)
+            runs = mlflow.search_runs(
+                experiment_ids=[experiment.experiment_id],
+                filter_string="tags.task = 'classification'",
+                order_by=["metrics.f1_weighted_test DESC"],
+                max_results=1
+            )
 
-                    X_test_reg["is_dead"] = y_clf_test.values
+            best_run_id = runs.iloc[0].run_id
+            run_info = mlflow.get_run(best_run_id)
 
-                else:
-                    X_train_reg = X_train
-                    X_test_reg = X_test
+            model_output = run_info.outputs.model_outputs[0]
+            model_id = model_output.model_id
 
-                # Run regression experiment
-                experiment_model = run_experiment(
-                    experiment=exp,
-                    X_train=X_train_reg,
-                    y_train=y_reg_train,
-                    X_test=X_test_reg,
-                    y_test=y_reg_test,
-                    task=task
-                )
+            model_path = (
+                f"mlflow-artifacts:/{experiment.experiment_id}/models/"
+                f"{model_id}/artifacts"
+            )
 
+            best_clf = mlflow.sklearn.load_model(model_path)
+
+            mlflow.set_tag("upstream_classifier_run", best_run_id)
+
+            X_train = X_train.copy()
+            X_test = X_test.copy()
+
+            if cfg.regression.predict_proba:
+                X_train["is_dead"] = best_clf.predict_proba(X_train)[:, 1]
             else:
+                X_train["is_dead"] = best_clf.predict(X_train)
 
-                experiment_model = run_experiment(
-                    experiment=exp,
-                    X_train=X_train,
-                    y_train=y_clf_train,
-                    X_test=X_test,
-                    y_test=y_clf_test,
-                    task=task,
-                )
+            X_test["is_dead"] = y_clf_test.values
 
-            import_model(exp["name"],
-                         task,
-                         experiment_model.model_uri)
+            y_train = y_reg_train
+            y_test = y_reg_test
+
+        else:
+            y_train = y_clf_train if cfg.task == "classification" else y_reg_train
+            y_test = y_clf_test if cfg.task == "classification" else y_reg_test
+
+        experiment_model = run_experiment(
+            experiment=exp,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            task=cfg.task,
+        )
+
+        import_model(run_name, cfg.task, experiment_model.model_uri)
+
+
+@hydra.main(config_path="configs", config_name="config", version_base=None)
+def main(cfg: DictConfig):
+    print(os.getcwd())
+
+    mlflow_run = {
+        "host": "127.0.0.1",
+        "port": 5000
+    }
+
+    # Ensure MLflow server is running
+    ensure_mlflow_running(host=mlflow_run["host"], port=mlflow_run["port"])
+
+    # Set MLflow tracking URI
+    mlflow.set_tracking_uri(
+        f"http://{mlflow_run['host']}:{mlflow_run['port']}")
+
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    dataset_path = os.path.join(script_dir, "data", "bone_narrow_raw.xlsx")
+
+    df = load_dataset(dataset_path)
+
+    run_mlflow(df, cfg)
 
 
 if __name__ == "__main__":
-    print(os.getcwd())
-
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    dataset_path = os.path.join(script_dir, "data", "bone_narrow_raw.xlsx")
-    dataset = load_dataset(dataset_path)
-
-    mlflow.set_tracking_uri("http://127.0.0.1:5000")
-
-    mlflow.end_run()
-    run_mlflow("classification")
-    run_mlflow("regression")
+    main()
