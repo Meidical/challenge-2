@@ -6,3 +6,5 @@ pip install -r requirements.txt
 
 
 mlflow server --host 127.0.0.1 --port 5000
+
+python -m model=rf gan=False smote=False 

@@ -24,7 +24,8 @@ from sdv.sampling import Condition
 from mlflow_experiments import EXPERIMENTS, PARAM_GRIDS, MODEL_REGISTRY_CLASSIFICATION, MODEL_REGISTRY_REGRESSION
 from mlflow.tracking import MlflowClient
 from pre_processor import PreProcessor
-
+import hydra
+from omegaconf import DictConfig
 
 def load_dataset(file_path: str):
     df = pd.read_excel(file_path)
@@ -291,17 +292,9 @@ def run_experiment(
                           precision_score(y_test, y_pred_test))
 
     else:
-
-        # Train
         log_regression_metrics("train", y_tr, y_pred_train)
-
-        # CV
         log_regression_metrics("cv", y_tr, y_pred_cv)
-
-        # Test
         log_regression_metrics("test", y_test, y_pred_test)
-
-        # R² on test
         mlflow.log_metric("test_r2", r2_score(y_test, y_pred_test))
 
         # Baseline
@@ -326,89 +319,129 @@ def log_regression_metrics(prefix, y_true, y_pred):
     mlflow.log_metric(f"{prefix}_mae", mae)
 
 
-def run_mlflow(task):
-    X_train, X_test, y_reg_train, y_reg_test, y_clf_train, y_clf_test = split_data(
-        dataset)
-    mlflow.set_experiment(f"bone-marrow-{task}")
+def build_run_name(exp, task):
+    parts = [exp["model"]]
 
-    best_run_id = None
+    if exp.get("tune"):
+        parts.append("tuned")
+    else:
+        parts.append("base")
 
-    for exp in EXPERIMENTS[task]:
-        with mlflow.start_run(run_name=exp["name"]):
-            if task == "regression":
-                if exp["use_clf"]:
+    if exp.get("smote"):
+        parts.append("smote")
 
-                    # Get best classification model
-                    experiment = mlflow.get_experiment_by_name(
-                        f"bone-marrow-classification")
+    if exp.get("gan"):
+        parts.append("gan")
 
-                    runs = mlflow.search_runs(
-                        experiment_ids=[experiment.experiment_id],
-                        filter_string="tags.task = 'classification'",
-                        order_by=["metrics.f1_weighted_test DESC"],
-                        max_results=1
-                    )
+    if task == "regression" and exp.get("use_clf"):
+        parts.append("wclf")
+        if exp.get("predict_proba"):
+            parts.append("proba")
 
-                    model_output = mlflow.get_run(
-                        runs.iloc[0].run_id).outputs.model_outputs[0]
-                    model_id = model_output.model_id
-                    model_path = f"mlflow-artifacts:/{experiment.experiment_id}/models/{model_id}/artifacts"
-                    best_clf = mlflow.sklearn.load_model(
-                        model_path
-                    )
+    return "_".join(parts)
 
-                    mlflow.set_tag("upstream_classifier_run", best_run_id)
 
-                    X_train_reg = X_train.copy()
-                    X_test_reg = X_test.copy()
+def run_mlflow(df, cfg):
+    X_train, X_test, y_reg_train, y_reg_test, y_clf_train, y_clf_test = split_data(df)
 
-                    if exp["predict_proba"]:
-                        X_train_reg["is_dead"] = best_clf.predict_proba(X_train)[
-                            :, 1]
-                    else:
-                        X_train_reg["is_dead"] = best_clf.predict(X_train)
+    mlflow.set_experiment(f"bone-marrow-{cfg.task}")
 
-                    X_test_reg["is_dead"] = y_clf_test.values
+    exp = {
+        "model": cfg.model,
+        "tune": cfg.tune,
+        "smote": cfg.smote,
+        "gan": cfg.gan,
+        "gan_epochs": cfg.gan_params.epochs,
+        "gan_0": cfg.gan_params.gan_0,
+        "gan_1": cfg.gan_params.gan_1,
+        "use_clf": cfg.regression.use_clf,
+        "predict_proba": cfg.regression.predict_proba,
+    }
 
-                else:
-                    X_train_reg = X_train
-                    X_test_reg = X_test
+    run_name = build_run_name(exp, cfg.task)
 
-                # Run regression experiment
-                experiment_model = run_experiment(
-                    experiment=exp,
-                    X_train=X_train_reg,
-                    y_train=y_reg_train,
-                    X_test=X_test_reg,
-                    y_test=y_reg_test,
-                    task=task
-                )
+    with mlflow.start_run(run_name=run_name):
 
+        # Log full Hydra config
+        mlflow.log_params({
+            "model": cfg.model,
+            "task": cfg.task,
+            "tune": cfg.tune,
+            "smote": cfg.smote,
+            "gan": cfg.gan,
+            "cv_folds": cfg.cv.folds,
+        })
+
+        if cfg.task == "regression" and cfg.regression.use_clf:
+
+            experiment = mlflow.get_experiment_by_name("bone-marrow-classification")
+
+            runs = mlflow.search_runs(
+                experiment_ids=[experiment.experiment_id],
+                filter_string="tags.task = 'classification'",
+                order_by=["metrics.f1_weighted_test DESC"],
+                max_results=1
+            )
+
+            best_run_id = runs.iloc[0].run_id
+            run_info = mlflow.get_run(best_run_id)
+
+            model_output = run_info.outputs.model_outputs[0]
+            model_id = model_output.model_id
+
+            model_path = (
+                f"mlflow-artifacts:/{experiment.experiment_id}/models/"
+                f"{model_id}/artifacts"
+            )
+
+            best_clf = mlflow.sklearn.load_model(model_path)
+
+            mlflow.set_tag("upstream_classifier_run", best_run_id)
+
+            X_train = X_train.copy()
+            X_test = X_test.copy()
+
+            if cfg.regression.predict_proba:
+                X_train["is_dead"] = best_clf.predict_proba(X_train)[:, 1]
             else:
+                X_train["is_dead"] = best_clf.predict(X_train)
 
-                experiment_model = run_experiment(
-                    experiment=exp,
-                    X_train=X_train,
-                    y_train=y_clf_train,
-                    X_test=X_test,
-                    y_test=y_clf_test,
-                    task=task,
-                )
+            X_test["is_dead"] = y_clf_test.values
 
-            import_model(exp["name"],
-                         task,
-                         experiment_model.model_uri)
+            y_train = y_reg_train
+            y_test = y_reg_test
+
+        else:
+            y_train = y_clf_train if cfg.task == "classification" else y_reg_train
+            y_test = y_clf_test if cfg.task == "classification" else y_reg_test
+
+        experiment_model = run_experiment(
+            experiment=exp,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            task=cfg.task,
+        )
+
+        import_model(run_name, cfg.task, experiment_model.model_uri)
 
 
-print(os.getcwd())
 
-dataset = load_dataset(
-    "/Users/luismagalhaes/MEI/challenge-2/mlflow/data/bone_narrow_raw.xlsx")
+import hydra
+from omegaconf import DictConfig
 
-mlflow.set_tracking_uri("http://127.0.0.1:5000")
+@hydra.main(config_path="configs", config_name="config", version_base=None)
+def main(cfg: DictConfig):
+    print(os.getcwd())
 
-mlflow.end_run()
-run_mlflow("classification")
-run_mlflow("regression")
+    df = load_dataset(
+        "./data/bone_narrow_raw.xlsx")
 
-# b_model = load_model("regression_model")
+    mlflow.set_tracking_uri("http://127.0.0.1:5000")
+
+    run_mlflow(df, cfg)
+
+
+if __name__ == "__main__":
+    main()

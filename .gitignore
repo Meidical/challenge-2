@@ -4,6 +4,7 @@ __pycache__/
 .idea/
 
 # MLflow
+mlflow/multirun
 mlflow/models/
 mlflow/mlartifacts/
 mlruns/
