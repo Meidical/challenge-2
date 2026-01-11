@@ -51,7 +51,6 @@ import bentoml
 
 # Local imports
 from mlflow_experiments import (
-    EXPERIMENTS,
     MODEL_REGISTRY_CLASSIFICATION,
     MODEL_REGISTRY_REGRESSION,
     PARAM_GRIDS
@@ -78,9 +77,7 @@ def start_mlflow_server(host="127.0.0.1", port=5000):
         [
             "mlflow", "server",
             "--host", host,
-            "--port", str(port),
-            "--backend-store-uri", "sqlite:///mlflow.db",
-            "--default-artifact-root", "./mlruns"
+            "--port", str(port)
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
