@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import bentoml
 from imblearn.over_sampling import SMOTE, RandomOverSampler
-from imblearn.pipeline import Pipeline
+from imblearn.pipeline import Pipeline as ImbPipeline
 from sklearn.base import clone
 from sklearn.calibration import cross_val_predict
 from sklearn.compose import ColumnTransformer
@@ -23,6 +23,7 @@ from sdv.metadata import Metadata
 from sdv.sampling import Condition
 from mlflow_experiments import EXPERIMENTS, PARAM_GRIDS, MODEL_REGISTRY_CLASSIFICATION, MODEL_REGISTRY_REGRESSION
 from mlflow.tracking import MlflowClient
+from pre_processor import PreProcessor
 
 
 def load_dataset(file_path: str):
@@ -120,121 +121,7 @@ def generate_gan(
         return X_train, y_train
 
 
-def build_preprocessor():
-    bool_cols = [
-        "donor_age_below_35",
-        "donor_CMV",
-        "recipient_age_below_10",
-        "recipient_gender",
-        "recipient_CMV",
-        "disease_group",
-        "gender_match",
-        "ABO_match",
-        "HLA_mismatch",
-        "risk_group",
-        "stem_cell_source"
-    ]
-
-    cat_cols = [
-        "CMV_status",
-        "disease",
-        "HLA_group_1",
-        "recipient_age_int",
-    ]
-
-    extra_cols = Pipeline([
-        ("feature_engineering", FunctionTransformer(feature_engineering, feature_names_out=lambda self,
-         input_features: ["donor_age_bin", "recipient_age_bin", "age_gap"])),
-        ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
-        ("scaler", MinMaxScaler())
-    ])
-
-    hla_pipeline = Pipeline([
-        ("parser", FunctionTransformer(
-            parse_hla_match, feature_names_out="one-to-one")),
-        ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
-        ("scaler", MinMaxScaler())
-    ])
-
-    bool_pipeline = Pipeline([
-        ("imputer", SimpleImputer(strategy="most_frequent", add_indicator=True)),
-        ("encoder", OneHotEncoder(drop="if_binary"))
-    ])
-
-    cat_pipeline = Pipeline([
-        ("imputer", SimpleImputer(strategy="most_frequent", add_indicator=True)),
-        ("one_hot", OneHotEncoder())
-    ])
-
-    columns_to_drop = ["donor_ABO",
-                       "recipient_ABO",
-                       "recipient_rh",
-                       "recipient_gender",
-                       "recipient_age_int",
-                       "recipient_age_below_10",
-                       "donor_age_below_35",
-                       "recipient_CMV",
-                       "donor_CMV",
-                       "disease_group"]
-
-    remainder_pipeline = Pipeline([
-        ("inputer", SimpleImputer(strategy="median", add_indicator=True)),
-        ("scaler", MinMaxScaler())
-    ])
-
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ("extra_cols", extra_cols, ["donor_age", "recipient_age"]),
-            ("column_dropper", "drop", columns_to_drop),
-            ("hla", hla_pipeline, ["HLA_match"]),
-            ("bool", bool_pipeline, bool_cols),
-            ("one_hot", cat_pipeline, cat_cols)
-        ],
-        remainder=remainder_pipeline
-    )
-
-    return preprocessor
-
-
-def feature_engineering(X):
-    X = X.copy()
-
-    # Age gap
-    X["age_gap"] = (X["donor_age"] - X["recipient_age"]).abs()
-
-    # Donor age bins
-    X["donor_age_bin"] = pd.cut(
-        X["donor_age"],
-        bins=[0, 18, 40, 60, 100],
-        labels=False
-    )
-
-    # Recipient age bins
-    X["recipient_age_bin"] = pd.cut(
-        X["recipient_age"],
-        bins=[0, 2, 5, 7, 10, 18, 22],
-        labels=False
-    )
-
-    return X[["donor_age_bin",
-              "recipient_age_bin",
-              "age_gap"]]
-
-
-def parse_hla_match(X):
-    s = X.iloc[:, 0]
-    return (
-        s
-        .astype(str)
-        .str.split("/", expand=True)[0]
-        .astype(float)
-        .to_frame()
-    )
-
-
-def build_pipeline(model, use_smote=False):
-    preprocessor = build_preprocessor()
-
+def build_pipeline(model, preprocessor, use_smote=False):
     steps = [("preprocessor", preprocessor)]
 
     if use_smote:
@@ -242,7 +129,7 @@ def build_pipeline(model, use_smote=False):
 
     steps.append(("classifier", model))
 
-    return Pipeline(steps)
+    return ImbPipeline(steps)
 
 
 def tune_model(
@@ -320,8 +207,13 @@ def run_experiment(
             "cv": n_splits
         })
 
+    # Create preprocessor instance
+    preprocessor_instance = PreProcessor()
+    preprocessor = preprocessor_instance.preprocessor
+
     pipeline = build_pipeline(
         model=model,
+        preprocessor=preprocessor,
         use_smote=experiment["smote"]
     )
 
@@ -417,9 +309,13 @@ def run_experiment(
         baseline_rmse = np.sqrt(mean_squared_error(y_test, baseline_pred))
         mlflow.log_metric("baseline_rmse_test", baseline_rmse)
 
-    # Log the model
-    infer_signature(X_train, y_pred_train)
-    return mlflow.sklearn.log_model(best_model, "model")
+    # Log the model with the fitted preprocessor
+    signature = infer_signature(X_train, y_pred_train)
+    return mlflow.sklearn.log_model(
+        best_model,
+        "model",
+        signature=signature
+    )
 
 
 def log_regression_metrics(prefix, y_true, y_pred):
@@ -506,7 +402,8 @@ def run_mlflow(task):
 
 print(os.getcwd())
 
-dataset = load_dataset("./mlflow/data/bone_narrow_raw.xlsx")
+dataset = load_dataset(
+    "/Users/luismagalhaes/MEI/challenge-2/mlflow/data/bone_narrow_raw.xlsx")
 
 mlflow.set_tracking_uri("http://127.0.0.1:5000")
 
