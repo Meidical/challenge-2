@@ -447,14 +447,14 @@ EXPERIMENTS = {
         #     "use_clf": True,
         #     "predict_proba": False,
         # },
-        # {
-        #     "name": "lgbm_tuned_wclf_proba",
-        #     "model": "lgbm",
-        #     "tune": True,
-        #     "smote": False,
-        #     "use_clf": True,
-        #     "predict_proba": True,
-        # },
+        {
+            "name": "lgbm_tuned_wclf_proba",
+            "model": "lgbm",
+            "tune": True,
+            "smote": False,
+            "use_clf": True,
+            "predict_proba": True,
+        },
         # =========================
         # ElasticNet regression
         # =========================

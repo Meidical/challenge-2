@@ -1,28 +1,64 @@
+# Standard library imports
 import logging
 import os
 import tempfile
 import uuid
-import mlflow
-from mlflow.models import infer_signature
+
+# Third-party imports - Data manipulation
 import numpy as np
 import pandas as pd
-import bentoml
-from imblearn.over_sampling import SMOTE, RandomOverSampler
-from imblearn.pipeline import Pipeline as ImbPipeline
+
+# Third-party imports - Machine Learning
 from sklearn.base import clone
 from sklearn.calibration import cross_val_predict
 from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, f1_score, mean_absolute_error, mean_squared_error, precision_score, recall_score, r2_score
-from sklearn.model_selection import GridSearchCV, KFold, RandomizedSearchCV, RepeatedKFold, RepeatedStratifiedKFold, StratifiedKFold, train_test_split
+from sklearn.impute import SimpleImputer
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    precision_score,
+    recall_score,
+    r2_score
+)
+from sklearn.model_selection import (
+    GridSearchCV,
+    KFold,
+    RandomizedSearchCV,
+    RepeatedKFold,
+    RepeatedStratifiedKFold,
+    StratifiedKFold,
+    train_test_split
+)
 from sklearn.pipeline import FunctionTransformer
 from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
-from sdv.single_table import CTGANSynthesizer
+
+# Third-party imports - Imbalanced learning
+from imblearn.over_sampling import SMOTE, RandomOverSampler
+from imblearn.pipeline import Pipeline as ImbPipeline
+
+# Third-party imports - Synthetic data generation
 from sdv.metadata import Metadata
 from sdv.sampling import Condition
-from mlflow_experiments import EXPERIMENTS, PARAM_GRIDS, MODEL_REGISTRY_CLASSIFICATION, MODEL_REGISTRY_REGRESSION
+from sdv.single_table import CTGANSynthesizer
+
+# Third-party imports - MLflow
+import mlflow
+from mlflow.models import infer_signature
 from mlflow.tracking import MlflowClient
+
+# Third-party imports - BentoML
+import bentoml
+
+# Local imports
+from mlflow_experiments import (
+    EXPERIMENTS,
+    MODEL_REGISTRY_CLASSIFICATION,
+    MODEL_REGISTRY_REGRESSION,
+    PARAM_GRIDS
+)
 from pre_processor import PreProcessor
 
 
@@ -400,15 +436,15 @@ def run_mlflow(task):
                          experiment_model.model_uri)
 
 
-print(os.getcwd())
+if __name__ == "__main__":
+    print(os.getcwd())
 
-dataset = load_dataset(
-    "/Users/luismagalhaes/MEI/challenge-2/mlflow/data/bone_narrow_raw.xlsx")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    dataset_path = os.path.join(script_dir, "data", "bone_narrow_raw.xlsx")
+    dataset = load_dataset(dataset_path)
 
-mlflow.set_tracking_uri("http://127.0.0.1:5000")
+    mlflow.set_tracking_uri("http://127.0.0.1:5000")
 
-mlflow.end_run()
-run_mlflow("classification")
-run_mlflow("regression")
-
-# b_model = load_model("regression_model")
+    mlflow.end_run()
+    run_mlflow("classification")
+    run_mlflow("regression")
