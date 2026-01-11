@@ -270,8 +270,8 @@ def tune_model(
     return gs
 
 
-def import_model(name, model_uri):
-    model = bentoml.mlflow.import_model(name, model_uri)
+def import_model(tag, task, model_uri):
+    model = bentoml.mlflow.import_model(f'{tag}_{task}', model_uri)
     model_name = ":".join([model.tag.name, model.tag.version])
     return model_name
 
@@ -347,8 +347,8 @@ def run_experiment(
 
     mlflow.log_params(experiment)
 
-    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42) if task == "classification" else RepeatedKFold(
-        n_splits=n_splits, n_repeats=5, random_state=42)
+    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42) if task == "classification" else KFold(
+        n_splits=n_splits, shuffle=True, random_state=42)
 
     X_tr, y_tr = generate_gan(
         X_train=X_train,
@@ -376,7 +376,7 @@ def run_experiment(
 
     y_pred_train = best_model.predict(X_tr)
     y_pred_cv = cross_val_predict(
-        best_model, X_tr, y_tr, cv=cv, verbose=10, n_jobs=-1, method="predict")
+        best_model, X_tr, y_tr, cv=cv, verbose=10, n_jobs=-1)
     y_pred_test = best_model.predict(X_test)
 
     if task == "classification":
@@ -418,10 +418,8 @@ def run_experiment(
         mlflow.log_metric("baseline_rmse_test", baseline_rmse)
 
     # Log the model
-    signature = infer_signature(X_train, y_pred_train)
-    mlflow.sklearn.log_model(best_model, "model")
-
-    return best_model
+    infer_signature(X_train, y_pred_train)
+    return mlflow.sklearn.log_model(best_model, "model")
 
 
 def log_regression_metrics(prefix, y_true, y_pred):
@@ -445,7 +443,6 @@ def run_mlflow(task):
                 if exp["use_clf"]:
 
                     # Get best classification model
-                    client = MlflowClient()
                     experiment = mlflow.get_experiment_by_name(
                         f"bone-marrow-classification")
 
@@ -456,11 +453,12 @@ def run_mlflow(task):
                         max_results=1
                     )
 
-                    best_run = runs.iloc[0]
-                    best_run_id = best_run.run_id
-
+                    model_output = mlflow.get_run(
+                        runs.iloc[0].run_id).outputs.model_outputs[0]
+                    model_id = model_output.model_id
+                    model_path = f"mlflow-artifacts:/{experiment.experiment_id}/models/{model_id}/artifacts"
                     best_clf = mlflow.sklearn.load_model(
-                        f"mlflow-artifacts:/473682003261315674/models/m-85653bff4f704cc894640d72cebb0ce2/artifacts"
+                        model_path
                     )
 
                     mlflow.set_tag("upstream_classifier_run", best_run_id)
@@ -487,7 +485,7 @@ def run_mlflow(task):
                     y_train=y_reg_train,
                     X_test=X_test_reg,
                     y_test=y_reg_test,
-                    task="regression"
+                    task=task
                 )
 
             else:
@@ -501,7 +499,9 @@ def run_mlflow(task):
                     task=task,
                 )
 
-            import_model('bone_marrow_model', experiment_model.model_uri)
+            import_model(exp["name"],
+                         task,
+                         experiment_model.model_uri)
 
 
 print(os.getcwd())
@@ -514,4 +514,4 @@ mlflow.end_run()
 run_mlflow("classification")
 run_mlflow("regression")
 
-b_model = load_model("regression_model")
+# b_model = load_model("regression_model")
