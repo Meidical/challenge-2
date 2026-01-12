@@ -1,28 +1,114 @@
-import logging
+# Standard library imports
 import os
+import subprocess
+import sys
 import tempfile
-import uuid
-import mlflow
-from mlflow.models import infer_signature
+import time
+import urllib.request
+import urllib.error
+
+# Third-party imports - Configuration
+import hydra
+from omegaconf import DictConfig
+import optuna
+
+# Third-party imports - Data manipulation
 import numpy as np
 import pandas as pd
-import bentoml
-from imblearn.over_sampling import SMOTE, RandomOverSampler
-from imblearn.pipeline import Pipeline
-from sklearn.base import clone
+
+# Third-party imports - Machine Learning
 from sklearn.calibration import cross_val_predict
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, f1_score, mean_absolute_error, mean_squared_error, precision_score, recall_score, r2_score
-from sklearn.model_selection import GridSearchCV, KFold, RandomizedSearchCV, RepeatedKFold, RepeatedStratifiedKFold, StratifiedKFold, train_test_split
-from sklearn.pipeline import FunctionTransformer
-from sklearn.preprocessing import MinMaxScaler, OneHotEncoder
-from sdv.single_table import CTGANSynthesizer
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    mean_absolute_error,
+    mean_squared_error,
+    precision_score,
+    recall_score,
+    r2_score
+)
+from sklearn.model_selection import (
+    GridSearchCV,
+    KFold,
+    StratifiedKFold,
+    cross_val_score,
+    train_test_split
+)
+
+# Third-party imports - Imbalanced learning
+from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline as ImbPipeline
+
+# Third-party imports - Synthetic data generation
 from sdv.metadata import Metadata
 from sdv.sampling import Condition
-from mlflow_experiments import EXPERIMENTS, PARAM_GRIDS, MODEL_REGISTRY_CLASSIFICATION, MODEL_REGISTRY_REGRESSION
-from mlflow.tracking import MlflowClient
+from sdv.single_table import CTGANSynthesizer
+
+# Third-party imports - MLflow
+import mlflow
+from mlflow.models import infer_signature
+
+# Third-party imports - BentoML
+import bentoml
+
+# Local imports
+from mlflow_experiments import (
+    MODEL_REGISTRY_CLASSIFICATION,
+    MODEL_REGISTRY_REGRESSION,
+    PARAM_GRIDS
+)
+from pre_processor import PreProcessor
+
+
+def check_mlflow_server(host="127.0.0.1", port=5000, timeout=2):
+    """Check if MLflow server is running"""
+    try:
+        url = f"http://{host}:{port}/health"
+        urllib.request.urlopen(url, timeout=timeout)
+        return True
+    except (urllib.error.URLError, urllib.error.HTTPError):
+        return False
+
+
+def start_mlflow_server(host="127.0.0.1", port=5000):
+    """Start MLflow tracking server in background"""
+    print(f"Starting MLflow server at {host}:{port}...")
+
+    # Start server in background
+    process = subprocess.Popen(
+        [
+            "mlflow", "server",
+            "--host", host,
+            "--port", str(port)
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+    )
+
+    # Wait for server to be ready
+    max_attempts = 30
+    for attempt in range(max_attempts):
+        if check_mlflow_server(host, port):
+            print(
+                f"MLflow server started successfully at http://{host}:{port}")
+            return process
+        time.sleep(1)
+        print(
+            f"Waiting for MLflow server to start... ({attempt + 1}/{max_attempts})")
+
+    # If server didn't start, kill the process and raise error
+    process.kill()
+    raise RuntimeError("Failed to start MLflow server")
+
+
+def ensure_mlflow_running(host="127.0.0.1", port=5000):
+    """Ensure MLflow server is running, start it if not"""
+    if check_mlflow_server(host, port):
+        print(f"MLflow server is already running at http://{host}:{port}")
+        return None
+    else:
+        return start_mlflow_server(host, port)
 
 
 def load_dataset(file_path: str):
@@ -120,121 +206,7 @@ def generate_gan(
         return X_train, y_train
 
 
-def build_preprocessor():
-    bool_cols = [
-        "donor_age_below_35",
-        "donor_CMV",
-        "recipient_age_below_10",
-        "recipient_gender",
-        "recipient_CMV",
-        "disease_group",
-        "gender_match",
-        "ABO_match",
-        "HLA_mismatch",
-        "risk_group",
-        "stem_cell_source"
-    ]
-
-    cat_cols = [
-        "CMV_status",
-        "disease",
-        "HLA_group_1",
-        "recipient_age_int",
-    ]
-
-    extra_cols = Pipeline([
-        ("feature_engineering", FunctionTransformer(feature_engineering, feature_names_out=lambda self,
-         input_features: ["donor_age_bin", "recipient_age_bin", "age_gap"])),
-        ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
-        ("scaler", MinMaxScaler())
-    ])
-
-    hla_pipeline = Pipeline([
-        ("parser", FunctionTransformer(
-            parse_hla_match, feature_names_out="one-to-one")),
-        ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
-        ("scaler", MinMaxScaler())
-    ])
-
-    bool_pipeline = Pipeline([
-        ("imputer", SimpleImputer(strategy="most_frequent", add_indicator=True)),
-        ("encoder", OneHotEncoder(drop="if_binary"))
-    ])
-
-    cat_pipeline = Pipeline([
-        ("imputer", SimpleImputer(strategy="most_frequent", add_indicator=True)),
-        ("one_hot", OneHotEncoder())
-    ])
-
-    columns_to_drop = ["donor_ABO",
-                       "recipient_ABO",
-                       "recipient_rh",
-                       "recipient_gender",
-                       "recipient_age_int",
-                       "recipient_age_below_10",
-                       "donor_age_below_35",
-                       "recipient_CMV",
-                       "donor_CMV",
-                       "disease_group"]
-
-    remainder_pipeline = Pipeline([
-        ("inputer", SimpleImputer(strategy="median", add_indicator=True)),
-        ("scaler", MinMaxScaler())
-    ])
-
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ("extra_cols", extra_cols, ["donor_age", "recipient_age"]),
-            ("column_dropper", "drop", columns_to_drop),
-            ("hla", hla_pipeline, ["HLA_match"]),
-            ("bool", bool_pipeline, bool_cols),
-            ("one_hot", cat_pipeline, cat_cols)
-        ],
-        remainder=remainder_pipeline
-    )
-
-    return preprocessor
-
-
-def feature_engineering(X):
-    X = X.copy()
-
-    # Age gap
-    X["age_gap"] = (X["donor_age"] - X["recipient_age"]).abs()
-
-    # Donor age bins
-    X["donor_age_bin"] = pd.cut(
-        X["donor_age"],
-        bins=[0, 18, 40, 60, 100],
-        labels=False
-    )
-
-    # Recipient age bins
-    X["recipient_age_bin"] = pd.cut(
-        X["recipient_age"],
-        bins=[0, 2, 5, 7, 10, 18, 22],
-        labels=False
-    )
-
-    return X[["donor_age_bin",
-              "recipient_age_bin",
-              "age_gap"]]
-
-
-def parse_hla_match(X):
-    s = X.iloc[:, 0]
-    return (
-        s
-        .astype(str)
-        .str.split("/", expand=True)[0]
-        .astype(float)
-        .to_frame()
-    )
-
-
-def build_pipeline(model, use_smote=False):
-    preprocessor = build_preprocessor()
-
+def build_pipeline(model, preprocessor, use_smote=False):
     steps = [("preprocessor", preprocessor)]
 
     if use_smote:
@@ -242,10 +214,35 @@ def build_pipeline(model, use_smote=False):
 
     steps.append(("classifier", model))
 
-    return Pipeline(steps)
+    return ImbPipeline(steps)
 
 
-def tune_model(
+def suggest_from_grid(trial, param_grid):
+    params = {}
+
+    for param_name, values in param_grid.items():
+        # numeric range → suggest_int / suggest_float
+        if all(isinstance(v, int) for v in values):
+            params[param_name] = trial.suggest_int(
+                param_name, min(values), max(values)
+            )
+
+        elif all(isinstance(v, float) for v in values):
+            params[param_name] = trial.suggest_float(
+                param_name, min(values), max(values), log=True
+            )
+
+        # categorical
+        else:
+            params[param_name] = trial.suggest_categorical(
+                param_name, values
+            )
+
+    return params
+
+
+def optuna_objective(
+    trial,
     pipeline,
     model_name,
     X_train,
@@ -254,24 +251,71 @@ def tune_model(
     task
 ):
     param_grid = PARAM_GRIDS[model_name]
+    params = suggest_from_grid(trial, param_grid)
 
-    gs = GridSearchCV(
-        estimator=pipeline,
-        param_grid=param_grid,
-        scoring="f1_weighted" if task == "classification" else "neg_root_mean_squared_error",
-        cv=cv,
-        n_jobs=4,
-        verbose=10,
-        return_train_score=True,
+    pipeline.set_params(**params)
+
+    scoring = (
+        "f1_weighted"
+        if task == "classification"
+        else "neg_root_mean_squared_error"
     )
 
-    gs.fit(X_train, y_train)
+    scores = cross_val_score(
+        pipeline,
+        X_train,
+        y_train,
+        cv=cv,
+        scoring=scoring,
+        n_jobs=4,
+    )
 
-    return gs
+    return scores.mean()
 
 
-def import_model(name, model_uri):
-    model = bentoml.mlflow.import_model(name, model_uri)
+def tune_model(
+    pipeline,
+    model_name,
+    X_train,
+    y_train,
+    cv,
+    task,
+    tuning_method,
+    n_trials=50
+):
+    if tuning_method == "grid":
+        gs = GridSearchCV(
+            pipeline,
+            PARAM_GRIDS[model_name],
+            scoring="f1_weighted" if task == "classification" else "neg_root_mean_squared_error",
+            cv=cv,
+            n_jobs=4,
+            verbose=10,
+        )
+        gs.fit(X_train, y_train)
+        return gs.best_estimator_, gs.best_score_
+
+    elif tuning_method == "optuna":
+        study = optuna.create_study(direction="maximize")
+
+        study.optimize(
+            lambda trial: optuna_objective(
+                trial, pipeline, model_name, X_train, y_train, cv, task
+            ),
+            n_trials=n_trials
+        )
+
+        mlflow.log_metric("optuna_trials", n_trials)
+
+        best_pipeline = pipeline.set_params(**study.best_params)
+        best_pipeline.fit(X_train, y_train)
+
+        return best_pipeline, study.best_value
+
+
+
+def import_model(tag, task, model_uri):
+    model = bentoml.mlflow.import_model(f'{tag}_{task}', model_uri)
     model_name = ":".join([model.tag.name, model.tag.version])
     return model_name
 
@@ -307,7 +351,7 @@ def run_experiment(
             "smote": experiment["smote"],
             "gan": experiment["gan"],
             "task": task,
-            "cv": n_splits
+            "cv": n_splits,
         })
 
     else:
@@ -317,11 +361,16 @@ def run_experiment(
             "model": experiment["model"],
             "tuned": experiment["tune"],
             "task": task,
-            "cv": n_splits
+            "cv": n_splits,
         })
+
+    # Create preprocessor instance
+    preprocessor_instance = PreProcessor()
+    preprocessor = preprocessor_instance.preprocessor
 
     pipeline = build_pipeline(
         model=model,
+        preprocessor=preprocessor,
         use_smote=experiment["smote"]
     )
 
@@ -347,8 +396,8 @@ def run_experiment(
 
     mlflow.log_params(experiment)
 
-    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42) if task == "classification" else RepeatedKFold(
-        n_splits=n_splits, n_repeats=5, random_state=42)
+    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42) if task == "classification" else KFold(
+        n_splits=n_splits, shuffle=True, random_state=42)
 
     X_tr, y_tr = generate_gan(
         X_train=X_train,
@@ -358,25 +407,29 @@ def run_experiment(
     )
 
     if experiment["tune"]:
-        gs = tune_model(
+        best_model, score= tune_model(
             pipeline,
             model_name=experiment["model"],
             X_train=X_tr,
             y_train=y_tr,
             cv=cv,
-            task=task
+            task=task,
+            tuning_method=experiment["tuning_method"]
         )
-        best_model = gs.best_estimator_
 
-        mlflow.log_params(gs.best_params_)
-        mlflow.log_metric("best_cv_score", gs.best_score_)
+
+        mlflow.log_params({
+            k: v for k, v in best_model.get_params().items()
+            if isinstance(v, (str, int, float, bool))
+        })
+        mlflow.log_metric("best_cv_score", score)
 
     else:
         best_model = pipeline.fit(X_tr, y_tr)
 
     y_pred_train = best_model.predict(X_tr)
     y_pred_cv = cross_val_predict(
-        best_model, X_tr, y_tr, cv=cv, verbose=10, n_jobs=-1, method="predict")
+        best_model, X_tr, y_tr, cv=cv, verbose=10, n_jobs=-1)
     y_pred_test = best_model.predict(X_test)
 
     if task == "classification":
@@ -399,17 +452,9 @@ def run_experiment(
                           precision_score(y_test, y_pred_test))
 
     else:
-
-        # Train
         log_regression_metrics("train", y_tr, y_pred_train)
-
-        # CV
         log_regression_metrics("cv", y_tr, y_pred_cv)
-
-        # Test
         log_regression_metrics("test", y_test, y_pred_test)
-
-        # R² on test
         mlflow.log_metric("test_r2", r2_score(y_test, y_pred_test))
 
         # Baseline
@@ -417,11 +462,13 @@ def run_experiment(
         baseline_rmse = np.sqrt(mean_squared_error(y_test, baseline_pred))
         mlflow.log_metric("baseline_rmse_test", baseline_rmse)
 
-    # Log the model
+    # Log the model with the fitted preprocessor
     signature = infer_signature(X_train, y_pred_train)
-    mlflow.sklearn.log_model(best_model, "model")
-
-    return best_model
+    return mlflow.sklearn.log_model(
+        best_model,
+        "model",
+        signature=signature
+    )
 
 
 def log_regression_metrics(prefix, y_true, y_pred):
@@ -432,86 +479,147 @@ def log_regression_metrics(prefix, y_true, y_pred):
     mlflow.log_metric(f"{prefix}_mae", mae)
 
 
-def run_mlflow(task):
+def build_run_name(exp, task):
+    parts = [exp["model"]]
+
+    if exp.get("tune"):
+        parts.append("tuned")
+    else:
+        parts.append("base")
+
+    if exp.get("tuning_method") == "grid":
+        parts.append("grid")
+    else:
+        parts.append("optuna")
+
+    if exp.get("smote"):
+        parts.append("smote")
+
+    if exp.get("gan"):
+        parts.append("gan")
+
+    if task == "regression" and exp.get("use_clf"):
+        parts.append("wclf")
+        if exp.get("predict_proba"):
+            parts.append("proba")
+
+    return "_".join(parts)
+
+
+def run_mlflow(df, cfg):
     X_train, X_test, y_reg_train, y_reg_test, y_clf_train, y_clf_test = split_data(
-        dataset)
-    mlflow.set_experiment(f"bone-marrow-{task}")
+        df)
 
-    best_run_id = None
+    mlflow.set_experiment(f"bone-marrow-{cfg.task}")
 
-    for exp in EXPERIMENTS[task]:
-        with mlflow.start_run(run_name=exp["name"]):
-            if task == "regression":
-                if exp["use_clf"]:
+    exp = {
+        "model": cfg.model,
+        "tune": cfg.tune,
+        "smote": cfg.smote,
+        "gan": cfg.gan,
+        "gan_epochs": cfg.gan_params.epochs,
+        "gan_0": cfg.gan_params.gan_0,
+        "gan_1": cfg.gan_params.gan_1,
+        "use_clf": cfg.regression.use_clf,
+        "predict_proba": cfg.regression.predict_proba,
+        "tuning_method": cfg.tuning.method
+    }
 
-                    # Get best classification model
-                    client = MlflowClient()
-                    experiment = mlflow.get_experiment_by_name(
-                        f"bone-marrow-classification")
+    run_name = build_run_name(exp, cfg.task)
 
-                    runs = mlflow.search_runs(
-                        experiment_ids=[experiment.experiment_id],
-                        filter_string="tags.task = 'classification'",
-                        order_by=["metrics.f1_weighted_test DESC"],
-                        max_results=1
-                    )
+    with mlflow.start_run(run_name=run_name):
 
-                    best_run = runs.iloc[0]
-                    best_run_id = best_run.run_id
+        # Log full Hydra config
+        mlflow.log_params({
+            "model": cfg.model,
+            "task": cfg.task,
+            "tune": cfg.tune,
+            "smote": cfg.smote,
+            "gan": cfg.gan,
+            "cv_folds": cfg.cv.folds,
+            "tuning_method": cfg.tuning.method
+        })
 
-                    best_clf = mlflow.sklearn.load_model(
-                        f"mlflow-artifacts:/473682003261315674/models/m-85653bff4f704cc894640d72cebb0ce2/artifacts"
-                    )
+        if cfg.task == "regression" and cfg.regression.use_clf:
 
-                    mlflow.set_tag("upstream_classifier_run", best_run_id)
+            experiment = mlflow.get_experiment_by_name(
+                "bone-marrow-classification")
 
-                    X_train_reg = X_train.copy()
-                    X_test_reg = X_test.copy()
+            runs = mlflow.search_runs(
+                experiment_ids=[experiment.experiment_id],
+                filter_string="tags.task = 'classification'",
+                order_by=["metrics.f1_weighted_test DESC"],
+                max_results=1
+            )
 
-                    if exp["predict_proba"]:
-                        X_train_reg["is_dead"] = best_clf.predict_proba(X_train)[
-                            :, 1]
-                    else:
-                        X_train_reg["is_dead"] = best_clf.predict(X_train)
+            best_run_id = runs.iloc[0].run_id
+            run_info = mlflow.get_run(best_run_id)
 
-                    X_test_reg["is_dead"] = y_clf_test.values
+            model_output = run_info.outputs.model_outputs[0]
+            model_id = model_output.model_id
 
-                else:
-                    X_train_reg = X_train
-                    X_test_reg = X_test
+            model_path = (
+                f"mlflow-artifacts:/{experiment.experiment_id}/models/"
+                f"{model_id}/artifacts"
+            )
 
-                # Run regression experiment
-                experiment_model = run_experiment(
-                    experiment=exp,
-                    X_train=X_train_reg,
-                    y_train=y_reg_train,
-                    X_test=X_test_reg,
-                    y_test=y_reg_test,
-                    task="regression"
-                )
+            best_clf = mlflow.sklearn.load_model(model_path)
 
+            mlflow.set_tag("upstream_classifier_run", best_run_id)
+
+            X_train = X_train.copy()
+            X_test = X_test.copy()
+
+            if cfg.regression.predict_proba:
+                X_train["is_dead"] = best_clf.predict_proba(X_train)[:, 1]
             else:
+                X_train["is_dead"] = best_clf.predict(X_train)
 
-                experiment_model = run_experiment(
-                    experiment=exp,
-                    X_train=X_train,
-                    y_train=y_clf_train,
-                    X_test=X_test,
-                    y_test=y_clf_test,
-                    task=task,
-                )
+            X_test["is_dead"] = y_clf_test.values
 
-            import_model('bone_marrow_model', experiment_model.model_uri)
+            y_train = y_reg_train
+            y_test = y_reg_test
+
+        else:
+            y_train = y_clf_train if cfg.task == "classification" else y_reg_train
+            y_test = y_clf_test if cfg.task == "classification" else y_reg_test
+
+        experiment_model = run_experiment(
+            experiment=exp,
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            task=cfg.task,
+        )
+
+        import_model(run_name, cfg.task, experiment_model.model_uri)
 
 
-print(os.getcwd())
+@hydra.main(config_path="configs", config_name="config", version_base=None)
+def main(cfg: DictConfig):
+    print(os.getcwd())
 
-dataset = load_dataset("./mlflow/data/bone_narrow_raw.xlsx")
+    mlflow_run = {
+        "host": "127.0.0.1",
+        "port": 5000
+    }
 
-mlflow.set_tracking_uri("http://127.0.0.1:5000")
+    # Ensure MLflow server is running
+    ensure_mlflow_running(host=mlflow_run["host"], port=mlflow_run["port"])
 
-mlflow.end_run()
-run_mlflow("classification")
-run_mlflow("regression")
+    # Set MLflow tracking URI
+    mlflow.set_tracking_uri(
+        f"http://{mlflow_run['host']}:{mlflow_run['port']}")
 
-b_model = load_model("regression_model")
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    dataset_path = os.path.join(script_dir, "data", "bone_narrow_raw.xlsx")
+
+    df = load_dataset(dataset_path)
+
+    run_mlflow(df, cfg)
+
+
+if __name__ == "__main__":
+    main()

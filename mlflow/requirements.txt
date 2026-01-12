@@ -15,3 +15,7 @@ lightgbm
 bentoml
 torch 
 transformers 
+hydra-core
+shap
+omegaconf
+optuna

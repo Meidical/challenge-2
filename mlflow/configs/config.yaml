@@ -1,0 +1,25 @@
+defaults:
+  - _self_
+
+task: classification
+
+model: rf
+tune: true
+smote: false
+gan: false
+
+cv:
+  folds: 5
+
+gan_params:
+  epochs: 300
+  gan_0: 10
+  gan_1: 20
+
+regression:
+  use_clf: false
+  predict_proba: true
+
+tuning:
+  method: optuna
+  trials: 50

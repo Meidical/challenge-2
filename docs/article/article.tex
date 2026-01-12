@@ -8,6 +8,7 @@
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{url}
+\usepackage{placeins}
 \usepackage[hidelinks]{hyperref}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
@@ -270,18 +271,22 @@ All feature engineering steps were integrated into a preprocessing pipeline
 \section{Experiments}
 The section evaluates the performance of different ML models for the prediction of both a classification target and a regression target and analyzes the impact of feature engineering, hyperparameter tuning and data augmentation techniques.
 
-Approximately 100 experiments with different models and model configurations were made. To facilitate this, MLflow was used for tracking and result reproducibility across model configurations.\cite{Zaharia2018MLflow}
+Approximately 100 experiments with different models and model configurations were made. To facilitate this, MLflow and Hydra were used for tracking and result reproducibility across model configurations.\cite{Zaharia2018MLflow} \cite{Yadan2019Hydra}
 
 \subsection{Survival Classification}
-For survival classification, several model families were tested. All models were tested in three different configurations: default parameters, tuned and tuned with SMOTE. Additionally, the best models were also tested using GANs with different combinations of epochs and synthetic sample sizes. Different number of training cross validation folds and train-test splits were also considered. As metrics, the F1-score on the test set was the main metric used for comparison but several other metrics were also used such as the accuracy, precision, recall and cross-validation F1-score of the train set.
+For survival classification, several model families were tested. All models were tested in three different configurations: default parameters, tuned and tuned with SMOTE. Additionally, the best models were also tested using GANs with different combinations of epochs and synthetic sample sizes. Different number of training cross validation folds and train-test splits were also considered. Finally, different methods of hyperparameter optimization (Grid Search, Random Search and Optuna) were explored and compared. \cite{optuna_2019} 
+
+As metrics, the F1-score on the test set was the main metric used for comparison but several other metrics were also used such as the accuracy, precision, recall and cross-validation F1-score of the train set.
 
 Linear classification models, including the Logistic Regression were evaluated as a baseline. Tree ensemble models like the Random Forest (RF) and the Extra Trees (ET), and gradient boosting models like the XGBoost (XGB) and the LightGBM (LGBM) were also tested. Alternating Decision Trees (ADTrees) and Support Vector Machines (SVMs) were also considered.
 
 Out of all the experiments, the tuned Random Forest Classifier with GAN-augmented data obtained the best result, with an F1-score of 0.62 on the test set, a precision of 0.57, a recall of 0.61 and an accuracy of 0.62. However, the model that, on average, achieved the best results was the Logistic Regression, having the base untuned model ranked as the best model not utilizing GANs.
 
-It was observed that SMOTE oversampling for the minority class didn't significantly help in predicting the survival of the patient, having the models with SMOTE achieved an F1-score on the test set of 0.45, and 0.44 without, with precision and recall being very similar. On the other hand, GAN oversampling improved significantly the results, reaching an average F1-score on the test set of 0.50, against 0.44 without. 
+Bayesian hyperparameter tuning using Optuna did not consistently outperform grid search or random search in test performance. However, it reached very similar results significantly faster and sometimes even outperforming other methods.
 
-On average, the tuned models without oversampling had better overall performance than the untuned models, however, it is important to note that some untuned models performed significantly better than their tuned conter-parts, even when confining their grid search, as can be seen in Fig. \ref{fig:tune_vs_untune}.
+Further, it was observed that SMOTE oversampling for the minority class didn't significantly help in predicting the survival of the patient, having the models with SMOTE achieved an F1-score on the test set of 0.45, and 0.44 without, with precision and recall being very similar. On the other hand, GAN oversampling improved significantly the results, reaching an average F1-score on the test set of 0.50, against 0.44 without. 
+
+On average, the tuned models without oversampling had better overall performance than the untuned models, however, it is important to note that some untuned models performed significantly better than their tuned conter-parts, even when confining their grid search, as can be seen in Fig.\ref{fig:tune_vs_untune}. It was observed that simpler models like Linear Regression and SVM often had better results than more complex models. 
 
 \begin{figure}[htbp]
     \centering
@@ -290,7 +295,9 @@ On average, the tuned models without oversampling had better overall performance
     \label{fig:tune_vs_untune}
 \end{figure}
 
-Another observation was made when comparing the cross-validation F1-Score on the train set with the test set. As can be seen in the sample of parallel coordinates plot in Fig. \ref{fig:train_vs_test}, 12 random experiments were chosen, and compared. It was observed that experiments that scored a high F1-score on cross-validation with the train set performed consistently worse on the test set than those that scored a lower value.
+GAN-augmentation had a significant impact in model performance for tree models, while negatively affecting linear models. Gradient boosting models also were positively affected. Several GAN configuration were attempted and it was observed that the one that had best performance overall was a sample size of 10 synthetic entries for class 0, 20 synthetic entries for class 1 and the the number of epochs set to 300.
+
+Another observation made was comparing the cross-validation F1-Score on the train set with the test set. As can be seen in the sample of parallel coordinates plot in Fig.\ref{fig:train_vs_test}, 12 random experiments were chosen, and compared. It was observed that experiments that scored a high F1-score on cross-validation with the train set performed consistently worse on the test set than those that scored a lower value.
 
 \begin{figure}[htbp]
     \centering
@@ -298,7 +305,7 @@ Another observation was made when comparing the cross-validation F1-Score on the
     \caption{Comparison between train and test set performance across experiments}
     \label{fig:train_vs_test}
 \end{figure}
-
+\FloatBarrier
 Some additional experiments were made on the best-performing models comparing different values for number of cross validation folds and train/test split ratios. It was observed that training the model with 5 folds and a test set size of 15\% of the total dataset yielded better results.
 
 \subsection{Survival Time Regression}
@@ -314,7 +321,7 @@ As can be seen in Fig. \ref{fig:use_clf}, using classification as a feature to p
 \end{figure}
 
 Using the red line to indicate the baseline level, the RMSE of the models not using classification were all observed to be above that level. However, by adding the survival status as a feature the RMSE was cut almost in half.
-Moreover, predicting the the survivability as a probability instead of a binary feature produced mixed results across models and configurations, with tree and linear models performing particularly bad, however, gradient boosting models like LightGBM and XGBoost had better results than the same model with a binary classification feature.
+Moreover, predicting the survivability as a probability instead of a binary feature produced mixed results across models and configurations, with tree and linear models performing particularly bad, however, gradient boosting models like LightGBM and XGBoost had better results than the same model with a binary classification feature.
 
 As with classification, different numbers of cross-validation folds were tested and 5 folds was observed to produce the best results.
 
