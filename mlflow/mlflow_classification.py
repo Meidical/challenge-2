@@ -10,6 +10,7 @@ import urllib.error
 # Third-party imports - Configuration
 import hydra
 from omegaconf import DictConfig
+import optuna
 
 # Third-party imports - Data manipulation
 import numpy as np
@@ -30,6 +31,7 @@ from sklearn.model_selection import (
     GridSearchCV,
     KFold,
     StratifiedKFold,
+    cross_val_score,
     train_test_split
 )
 
@@ -215,7 +217,32 @@ def build_pipeline(model, preprocessor, use_smote=False):
     return ImbPipeline(steps)
 
 
-def tune_model(
+def suggest_from_grid(trial, param_grid):
+    params = {}
+
+    for param_name, values in param_grid.items():
+        # numeric range → suggest_int / suggest_float
+        if all(isinstance(v, int) for v in values):
+            params[param_name] = trial.suggest_int(
+                param_name, min(values), max(values)
+            )
+
+        elif all(isinstance(v, float) for v in values):
+            params[param_name] = trial.suggest_float(
+                param_name, min(values), max(values), log=True
+            )
+
+        # categorical
+        else:
+            params[param_name] = trial.suggest_categorical(
+                param_name, values
+            )
+
+    return params
+
+
+def optuna_objective(
+    trial,
     pipeline,
     model_name,
     X_train,
@@ -224,20 +251,67 @@ def tune_model(
     task
 ):
     param_grid = PARAM_GRIDS[model_name]
+    params = suggest_from_grid(trial, param_grid)
 
-    gs = GridSearchCV(
-        estimator=pipeline,
-        param_grid=param_grid,
-        scoring="f1_weighted" if task == "classification" else "neg_root_mean_squared_error",
-        cv=cv,
-        n_jobs=4,
-        verbose=10,
-        return_train_score=True,
+    pipeline.set_params(**params)
+
+    scoring = (
+        "f1_weighted"
+        if task == "classification"
+        else "neg_root_mean_squared_error"
     )
 
-    gs.fit(X_train, y_train)
+    scores = cross_val_score(
+        pipeline,
+        X_train,
+        y_train,
+        cv=cv,
+        scoring=scoring,
+        n_jobs=4,
+    )
 
-    return gs
+    return scores.mean()
+
+
+def tune_model(
+    pipeline,
+    model_name,
+    X_train,
+    y_train,
+    cv,
+    task,
+    tuning_method,
+    n_trials=50
+):
+    if tuning_method == "grid":
+        gs = GridSearchCV(
+            pipeline,
+            PARAM_GRIDS[model_name],
+            scoring="f1_weighted" if task == "classification" else "neg_root_mean_squared_error",
+            cv=cv,
+            n_jobs=4,
+            verbose=10,
+        )
+        gs.fit(X_train, y_train)
+        return gs.best_estimator_, gs.best_score_
+
+    elif tuning_method == "optuna":
+        study = optuna.create_study(direction="maximize")
+
+        study.optimize(
+            lambda trial: optuna_objective(
+                trial, pipeline, model_name, X_train, y_train, cv, task
+            ),
+            n_trials=n_trials
+        )
+
+        mlflow.log_metric("optuna_trials", n_trials)
+
+        best_pipeline = pipeline.set_params(**study.best_params)
+        best_pipeline.fit(X_train, y_train)
+
+        return best_pipeline, study.best_value
+
 
 
 def import_model(tag, task, model_uri):
@@ -277,7 +351,7 @@ def run_experiment(
             "smote": experiment["smote"],
             "gan": experiment["gan"],
             "task": task,
-            "cv": n_splits
+            "cv": n_splits,
         })
 
     else:
@@ -287,7 +361,7 @@ def run_experiment(
             "model": experiment["model"],
             "tuned": experiment["tune"],
             "task": task,
-            "cv": n_splits
+            "cv": n_splits,
         })
 
     # Create preprocessor instance
@@ -333,18 +407,22 @@ def run_experiment(
     )
 
     if experiment["tune"]:
-        gs = tune_model(
+        best_model, score= tune_model(
             pipeline,
             model_name=experiment["model"],
             X_train=X_tr,
             y_train=y_tr,
             cv=cv,
-            task=task
+            task=task,
+            tuning_method=experiment["tuning_method"]
         )
-        best_model = gs.best_estimator_
 
-        mlflow.log_params(gs.best_params_)
-        mlflow.log_metric("best_cv_score", gs.best_score_)
+
+        mlflow.log_params({
+            k: v for k, v in best_model.get_params().items()
+            if isinstance(v, (str, int, float, bool))
+        })
+        mlflow.log_metric("best_cv_score", score)
 
     else:
         best_model = pipeline.fit(X_tr, y_tr)
@@ -409,6 +487,11 @@ def build_run_name(exp, task):
     else:
         parts.append("base")
 
+    if exp.get("tuning_method") == "grid":
+        parts.append("grid")
+    else:
+        parts.append("optuna")
+
     if exp.get("smote"):
         parts.append("smote")
 
@@ -439,6 +522,7 @@ def run_mlflow(df, cfg):
         "gan_1": cfg.gan_params.gan_1,
         "use_clf": cfg.regression.use_clf,
         "predict_proba": cfg.regression.predict_proba,
+        "tuning_method": cfg.tuning.method
     }
 
     run_name = build_run_name(exp, cfg.task)
@@ -453,6 +537,7 @@ def run_mlflow(df, cfg):
             "smote": cfg.smote,
             "gan": cfg.gan,
             "cv_folds": cfg.cv.folds,
+            "tuning_method": cfg.tuning.method
         })
 
         if cfg.task == "regression" and cfg.regression.use_clf:
