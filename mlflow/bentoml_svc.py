@@ -23,7 +23,7 @@ class BoneMarrowClassificationInput(BaseModel):
     disease_group: str
     gender_match: str
     ABO_match: str
-    CMV_status: str
+    CMV_status: float
     HLA_match: str
     HLA_mismatch: str
     antigen: int
@@ -51,7 +51,7 @@ class BoneMarrowRegressionInput(BaseModel):
     disease_group: str
     gender_match: str
     ABO_match: str
-    CMV_status: str
+    CMV_status: float
     HLA_match: str
     HLA_mismatch: str
     antigen: int
@@ -59,7 +59,7 @@ class BoneMarrowRegressionInput(BaseModel):
     HLA_group_1: str
     risk_group: str
     stem_cell_source: str
-    survival_status: int  # Required for regression
+    is_dead: float
 
 
 # Define the BentoML Service
@@ -68,7 +68,7 @@ class BoneMarrowRegressionInput(BaseModel):
     workers=1,
     traffic={"timeout": 20},
 )
-class MyService:
+class BoneMarrowClassificationService:
     # Load models in __init__
     def __init__(self):
         # Load classification model
@@ -78,7 +78,7 @@ class MyService:
 
         # Load regression model
         self.regression_model = bentoml.models.get(
-            "enet_base_wclf_regression:latest")
+            "lgbm_tuned_wclf_proba_regression:latest")
         self.regression_model_impl = self.regression_model.load_model()
 
     # Classification endpoint - predicts survival status with probability
@@ -102,7 +102,7 @@ class MyService:
             'disease_group': data.disease_group,
             'gender_match': data.gender_match,
             'ABO_match': data.ABO_match,
-            'CMV_status': str(data.CMV_status),
+            'CMV_status': data.CMV_status,
             'HLA_match': data.HLA_match,
             'HLA_mismatch': data.HLA_mismatch,
             'antigen': data.antigen,
@@ -162,7 +162,7 @@ class MyService:
             'disease_group': data.disease_group,
             'gender_match': data.gender_match,
             'ABO_match': data.ABO_match,
-            'CMV_status': str(data.CMV_status),
+            'CMV_status': data.CMV_status,
             'HLA_match': data.HLA_match,
             'HLA_mismatch': data.HLA_mismatch,
             'antigen': data.antigen,
@@ -170,15 +170,16 @@ class MyService:
             'HLA_group_1': data.HLA_group_1,
             'risk_group': data.risk_group,
             'stem_cell_source': data.stem_cell_source,
-            'survival_status': data.survival_status
+            # Convert float to int
+            # 'survival_status': int(data.survival_status),
+            'is_dead': data.is_dead
         }])
 
         # Predict survival time
         result = self.regression_model_impl.predict(input_df)
 
         return {
-            "predicted_survival_time_days": float(result[0]),
-            "survival_status": data.survival_status
+            "predicted_survival_time_days": float(result[0])
         }
 
     # Combined prediction endpoint
