@@ -1,4 +1,5 @@
 import bentoml
+import mlflow
 import numpy as np
 import pandas as pd
 from pydantic import BaseModel
@@ -71,17 +72,77 @@ class BoneMarrowRegressionInput(BaseModel):
 class BoneMarrowClassificationService:
     # Load models in __init__
     def __init__(self):
+
+        classification_tag = self.get_model_by_run_id(task="classification")
+        regression_tag = self.get_model_by_run_id(task="regression")
+
+        print("Loaded classification model:", classification_tag)
+        print("Loaded regression model:", regression_tag)
+
         # Load classification model
         self.classification_model = bentoml.models.get(
-            "rf_gan_classification:latest")
+            classification_tag)
         self.classification_model_impl = self.classification_model.load_model()
 
         # Load regression model
         self.regression_model = bentoml.models.get(
-            "lgbm_tuned_wclf_proba_regression:latest")
+            regression_tag)
         self.regression_model_impl = self.regression_model.load_model()
 
     # Classification endpoint - predicts survival status with probability
+    @staticmethod
+    def get_model_by_run_id(task):
+        try:
+            models = bentoml.models.list()
+
+            # Set MLflow tracking URI
+            mlflow.set_tracking_uri("http://127.0.0.1:5000")
+
+            # Get experiment by task
+            experiment_name = f"bone-marrow-{task}"
+            experiment = mlflow.get_experiment_by_name(experiment_name)
+
+            if experiment is None:
+                raise ValueError(f"Experiment '{experiment_name}' not found")
+
+            # Get best run based on task
+            if task == "classification":
+                metric = "f1_weighted_test"
+            else:
+                metric = "test_rmse"
+
+            # Search for best run
+            runs = mlflow.search_runs(
+                experiment_ids=[experiment.experiment_id],
+                filter_string=f"tags.task = '{task}'",
+                order_by=[
+                    f"metrics.{metric} {'DESC' if task == 'classification' else 'ASC'}"],
+                max_results=1
+            )
+
+            if runs.empty:
+                raise ValueError(f"No runs found for task '{task}'")
+
+            best_run_id = runs.iloc[0].run_id
+
+            # Find model with matching run_id in BentoML
+            models = bentoml.models.list()
+            for model in models:
+                if model.info.labels.get("run_id") == best_run_id:
+                    print(f"Found best {task} model: {model.tag}")
+                    return str(model.tag)
+
+            raise ValueError(
+                f"No BentoML model found with run_id: {best_run_id}")
+
+        except Exception as e:
+            print(f"Warning: Could not retrieve best model for {task}: {e}")
+            # Return default tags
+            if task == "classification":
+                return "rf_gan_classification:latest"
+            else:
+                return "lgbm_tuned_wclf_proba_regression:latest"
+
     @bentoml.api
     def predict_classification(self, data: BoneMarrowClassificationInput) -> dict:
         # Prepare input data as pandas DataFrame with column names

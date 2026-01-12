@@ -313,9 +313,9 @@ def tune_model(
         return best_pipeline, study.best_value
 
 
-
 def import_model(tag, task, model_uri):
-    model = bentoml.mlflow.import_model(f'{tag}_{task}', model_uri)
+    model = bentoml.mlflow.import_model(f'{tag}_{task}', model_uri, labels={
+                                        "run_id": mlflow.active_run().info.run_id})
     model_name = ":".join([model.tag.name, model.tag.version])
     return model_name
 
@@ -407,7 +407,7 @@ def run_experiment(
     )
 
     if experiment["tune"]:
-        best_model, score= tune_model(
+        best_model, score = tune_model(
             pipeline,
             model_name=experiment["model"],
             X_train=X_tr,
@@ -416,7 +416,6 @@ def run_experiment(
             task=task,
             tuning_method=experiment["tuning_method"]
         )
-
 
         mlflow.log_params({
             k: v for k, v in best_model.get_params().items()

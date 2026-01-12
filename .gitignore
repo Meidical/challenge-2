@@ -37,3 +37,5 @@ bone_marrow_metadata.json
 *.bak
 *.tmp
 *.swp
+
+mlflow/outputs/
