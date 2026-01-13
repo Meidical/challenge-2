@@ -10,7 +10,14 @@
 import os
 import sys
 import ast
+from urllib import response
 import pandas as pd
+import numpy as np
+import requests, json
+# pip install bentoml
+# pip install requests
+
+
 
 # Add project root to sys.path to allow imports from notebooks package
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -28,7 +35,7 @@ from notebooks.dev.match_calc import *
 
 
 # Função Principal
-def aggregate_data(id, donor_list_path, recipient_list_path):
+def aggregate_data(id, donor_list_path, recipient_list_path, stem_cell_source):
 
     recipient_ID = id
 
@@ -67,7 +74,7 @@ def aggregate_data(id, donor_list_path, recipient_list_path):
     # Preparar dados do recetor usados em todos os cálculos
     recipient_tissue = ast.literal_eval(rows_recipients['tissue_type'].values[0])
     recipient_cmv = int(rows_recipients['recipient_CMV'].values[0].lower() == "present")
-    recipient_gender_conv = int(rows_recipients['recipient_gender'].values[0].upper() == "M")
+    recipient_gender_conv = int(rows_recipients['recipient_gender'].values[0].lower() == "male")
 
     def convert_ABO(valor):
         mapa = {"O": 0, "A": 1, "B": 2, "AB": 3}
@@ -82,7 +89,7 @@ def aggregate_data(id, donor_list_path, recipient_list_path):
 
         # HLA Match
         donor_tissue = ast.literal_eval(donor['tissue_type'])
-        HLA_match, _, _ = get_HLA_match(donor_tissue, recipient_tissue)
+        HLA_match, missing_allell, missing_antigen = get_HLA_match(donor_tissue, recipient_tissue)
 
         # CMV Serostatus
         donor_cmv = int(donor['donor_CMV'].lower() == "present")
@@ -93,44 +100,126 @@ def aggregate_data(id, donor_list_path, recipient_list_path):
         #print("\nAge", donor["donor_age"], "Donor Age Group:", donor["donor_age_group"])
 
         # Gender Match
-        donor_gender = int(donor['donor_gender'].upper() == "M")
+        donor_gender = int(donor['donor_gender'].lower() == "male")
         gender_match = get_gender_match(donor_gender, recipient_gender_conv)
 
         # ABO Match
         donor_ABO = convert_ABO(donor['donor_ABO'])
         ABO_match = get_ABO_match(donor_ABO, recipient_ABO)
 
-        # Expected Survival Time
-        exp_survival_time = 500
 
+        ##### Survival Status (is_dead) #####
+        url = "http://localhost:3000/predict_classification" # Endpoint do BentoML para predição de sobrevivência
+
+        payload_is_dead = {
+            "donor_age": float(donor['donor_age']),
+            "donor_age_below_35": "yes" if int(donor_age_group) == 2 else "no",
+            "donor_ABO": donor['donor_ABO'],
+            "donor_CMV": "present" if int(donor_cmv) == 1 else "absent",
+            "recipient_age": float(rows_recipients['recipient_age'].values[0]),
+            "recipient_age_below_10": "yes" if float(rows_recipients['recipient_age'].values[0]) < 10 else "no",
+            "recipient_age_int": "0_5" if float(rows_recipients['recipient_age'].values[0]) <= 5 else "5_10" if float(rows_recipients['recipient_age'].values[0]) <= 10 else "10_20",
+            "recipient_gender": str(rows_recipients['recipient_gender'].values[0]),
+            "recipient_body_mass": float(rows_recipients['recipient_body_mass'].values[0]),
+            "recipient_ABO": str(rows_recipients['recipient_ABO'].values[0]),
+            "recipient_rh": str(rows_recipients['recipient_rh'].values[0]),
+            "recipient_CMV": "present" if int(recipient_cmv) == 1 else "absent",
+            "disease": str(rows_recipients['disease'].values[0]),
+            "disease_group": "nonmalignant" if str(rows_recipients['disease'].values[0]) == "nonmalignant" else "malignant",
+            "gender_match": "female_to_male" if int(gender_match) == 1 else "other",
+            "ABO_match": "matched" if int(ABO_match) == 1 else "mismatched",
+            "CMV_status": float(CMV_Serostatus),
+            "HLA_match": f"{int(HLA_match)}/10",
+            "HLA_mismatch": "mismatched" if int(HLA_match) <= 8 else "matched",
+            "antigen": float(missing_antigen),
+            "allel": float(missing_allell),
+            "HLA_group_1": "matched",
+            "risk_group": str(rows_recipients['risk_group'].values[0]),
+            "stem_cell_source": "peripheral_blood" if stem_cell_source.upper() == "PBSC" else "bone_marrow"            
+        } 
+
+        # Debug: imprimir payload antes de enviar
+        print(f"\n### Payload para {donor_name} ###")
+        print(json.dumps(payload_is_dead, indent=2))
+        
+        response_is_dead = requests.post(url, json={"data": payload_is_dead})
+
+        try:
+            response_is_dead.raise_for_status()  # Verifica se houve erro HTTP
+            is_dead = response_is_dead.json().get("survival_status")
+        except requests.exceptions.RequestException as e:
+            print(f"Erro na requisição: {e}")
+            print(f"Detalhes do erro do servidor:")
+            print(response_is_dead.text)
+            is_dead = 0  # Default value
+        except ValueError:
+            print(f"Erro ao fazer parse do JSON: {response_is_dead.text}")
+            is_dead = 0  # Default value
+        print("Is Dead Response:")
+        print(response_is_dead)
+
+
+
+        ##### Expected Survival Time #####
+        url = "http://localhost:3000/predict_regression" # Endpoint do BentoML para predição de tempo de sobrevivência
+        
+        payload_survival_time = payload_is_dead.copy()
+        payload_survival_time['is_dead'] = is_dead      
+
+        # Debug: imprimir payload antes de enviar
+        print(f"\n### Payload para {donor_name} ###")
+        print(json.dumps(payload_survival_time, indent=2))
+        
+        response = requests.post(url, json={"data": payload_survival_time})
+
+        try:
+            response.raise_for_status()  # Verifica se houve erro HTTP
+            predicted_survival_time = response.json().get("predicted_survival_time_days")
+        except requests.exceptions.RequestException as e:
+            print(f"Erro na requisição: {e}")
+            print(f"Detalhes do erro do servidor:")
+            print(response.text)
+            predicted_survival_time = None
+        except ValueError:
+            print(f"Erro ao fazer parse do JSON: {response.text}")
+            predicted_survival_time = None
+        
+        print(response)
+      
+      # Armazena os dados agregados      
         aggregated_data["Donors"].append({
-            "Recipient ID": recipient_ID,
+            "recipient_ID": recipient_ID,
             "Recipient Name": rows_recipients['recipient_name'].values[0],
-            "Donor ID": donor_ID,
+            "donor_ID": donor_ID,
             "Donor Name": donor_name,
             "HLA Match": HLA_match,
             "CMV Serostatus": CMV_Serostatus,
             "Donor Age Group": donor_age_group,
             "Gender Match": gender_match,
             "ABO Match": ABO_match,
-            "Expected Survival Time": exp_survival_time
+            "Expected Survaival Status": "not_survived" if is_dead == 1 else "survived",
+            "Expected Survival Time": predicted_survival_time
         })
 
     aggregated_data = pd.DataFrame(aggregated_data["Donors"]) if aggregated_data["Donors"] else pd.DataFrame()
     if not aggregated_data.empty:
         aggregated_data = aggregated_data[[
-            "Recipient ID",
+            "recipient_ID",
             "Recipient Name",
-            "Donor ID",
+            "donor_ID",
             "Donor Name",
             "HLA Match",
             "CMV Serostatus",
             "Donor Age Group",
             "Gender Match",
             "ABO Match",
+            "Expected Survaival Status",
             "Expected Survival Time"
         ]]
     print("\n### Aggregated Data ###")
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', None)
+    pd.set_option('display.max_colwidth', None)
     print(aggregated_data)
     return aggregated_data
 
@@ -143,6 +232,7 @@ if __name__ == "__main__":
     recipient_CSV_PATH = os.path.join(BASE_DIR, "..", "datasets", "raw", "recipient_waiting_list_raw.csv")      
 
     test_id = 'IR001'
+    stem_cell_source = 'PBSC'
 
-    aggregated_data = aggregate_data(test_id, donors_CSV_PATH, recipient_CSV_PATH)
+    aggregated_data = aggregate_data(test_id, donors_CSV_PATH, recipient_CSV_PATH, stem_cell_source)
     #print(aggregated_data)

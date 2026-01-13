@@ -14,7 +14,7 @@ recipient_CSV_PATH = os.path.join(BASE_DIR, "..", "datasets", "raw", "recipient_
 df_recipients = pd.read_csv(recipient_CSV_PATH, sep=';', skip_blank_lines=True, encoding='latin1')
 
 
-def call_prepare_data_for_topsis():
+def call_prepare_data_for_topsis(stem_cell_source):
     print("List of IDs from waiting recipients:")
     print(df_recipients['recipient_ID'].tolist())
 
@@ -22,7 +22,7 @@ def call_prepare_data_for_topsis():
         recipient_id = input("\nIndique um receptor: ").strip().upper()
         if recipient_id in df_recipients['recipient_ID'].tolist():
             print("\nVocê digitou:", recipient_id, "Name:", df_recipients.loc[df_recipients['recipient_ID'] == recipient_id, 'recipient_name'].values[0])
-            aggregated_data = aggregate_data(recipient_id, donors_CSV_PATH, recipient_CSV_PATH)
+            aggregated_data = aggregate_data(recipient_id, donors_CSV_PATH, recipient_CSV_PATH, stem_cell_source)
             break
                 
         else:
@@ -42,7 +42,7 @@ def call_planning_for_best_donor():
             continue
         else:            
             break
-    dataframe = call_prepare_data_for_topsis()    
+    dataframe = call_prepare_data_for_topsis(stem_cell_source)    
     result = calculate_topsis(dataframe, stem_cell_source, verbose=True)
     return result
 

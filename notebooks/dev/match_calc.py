@@ -32,6 +32,7 @@ def get_HLA_match(donor_tissue_type, recipient_tissue_type):
                 if donor_val.split(':')[1] != recipient_val.split(':')[1]:
                     missing_antigen += 1
 
+    print(f"HLA Match: {matches}, Missing Allell: {missing_allell}, Missing Antigen: {missing_antigen}")
     return matches, missing_allell, missing_antigen
 
 
