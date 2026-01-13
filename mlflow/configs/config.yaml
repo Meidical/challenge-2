@@ -24,3 +24,21 @@ regression:
 tuning:
   method: optuna
   trials: 50
+
+
+# Feature engineering
+fe:
+  age_gap: true
+  age_bin: true
+
+  drop_columns:
+    donor_ABO: true
+    recipient_ABO: true
+    recipient_rh: true
+    recipient_gender: true
+    recipient_age_int: true
+    recipient_age_below_10: true
+    donor_age_below_35: true
+    recipient_CMV: true
+    donor_CMV: true
+    disease_group: true

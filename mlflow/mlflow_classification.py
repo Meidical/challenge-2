@@ -16,6 +16,15 @@ import optuna
 import numpy as np
 import pandas as pd
 
+# Third-party imports - Preprocessing
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import FunctionTransformer, Pipeline
+from sklearn.preprocessing import (
+    MinMaxScaler, 
+    OneHotEncoder
+)
+
 # Third-party imports - Machine Learning
 from sklearn.calibration import cross_val_predict
 from sklearn.metrics import (
@@ -210,6 +219,142 @@ def generate_gan(
         return X_train, y_train
 
 
+def feature_engineering(X, cfg):
+    X = X.copy()
+    features = []
+
+    if cfg.fe.age_gap:
+        X["age_gap"] = (X["donor_age"] - X["recipient_age"]).abs()
+        features.append("age_gap")
+
+    if cfg.fe.age_bin:
+        X["donor_age_bin"] = pd.cut(
+            X["donor_age"],
+            bins=[0, 18, 40, 60, 100],
+            labels=False
+        )
+        features.append("donor_age_bin")
+
+        X["recipient_age_bin"] = pd.cut(
+            X["recipient_age"],
+            bins=[0, 2, 5, 7, 10, 18, 22],
+            labels=False
+        )
+        features.append("recipient_age_bin")
+
+    if not features:
+        X["_dummy"] = 0
+        features.append("_dummy")
+
+
+    return X[features]
+
+
+def make_feature_names_out(cfg):
+    def _feature_names_out(*args, **kwargs):
+        names = []
+
+        if cfg.fe.age_gap:
+            names.append("age_gap")
+
+        if cfg.fe.age_bin:
+            names.extend(["donor_age_bin", "recipient_age_bin"])
+
+        if not names:
+            names.extend(["_dummy"])
+
+        return np.array(names, dtype=object)
+
+    return _feature_names_out
+
+
+
+def parse_hla_match(X):
+    s = X.iloc[:, 0]
+    return (
+        s
+        .astype(str)
+        .str.split("/", expand=True)[0]
+        .astype(float)
+        .to_frame()
+    )
+
+
+def build_preprocessor(cfg):
+    bool_cols = [
+        "donor_age_below_35",
+        "donor_CMV",
+        "recipient_age_below_10",
+        "recipient_gender",
+        "recipient_CMV",
+        "disease_group",
+        "gender_match",
+        "ABO_match",
+        "HLA_mismatch",
+        "risk_group",
+        "stem_cell_source"
+    ]
+
+    cat_cols = [
+        "CMV_status",
+        "disease",
+        "HLA_group_1",
+        "recipient_age_int",
+    ]
+
+    extra_cols = Pipeline([
+        (
+            "feature_engineering",
+            FunctionTransformer(
+                lambda X: feature_engineering(X, cfg),
+                feature_names_out=make_feature_names_out(cfg)
+            )
+        ),
+
+        ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
+        ("scaler", MinMaxScaler())
+    ])
+
+    hla_pipeline = Pipeline([
+        ("parser", FunctionTransformer(parse_hla_match, feature_names_out="one-to-one")),
+        ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
+        ("scaler", MinMaxScaler())
+    ])
+
+    bool_pipeline = Pipeline([
+        ("imputer", SimpleImputer(strategy="most_frequent", add_indicator=True)),
+        ("encoder", OneHotEncoder(drop="if_binary"))
+    ])
+
+    cat_pipeline = Pipeline([
+        ("imputer", SimpleImputer(strategy="most_frequent", add_indicator=True)),
+        ("one_hot", OneHotEncoder())
+    ])
+
+    columns_to_drop = [
+        col for col, drop in cfg.fe.drop_columns.items()
+        if drop
+    ]
+
+    remainder_pipeline = Pipeline([
+        ("inputer", SimpleImputer(strategy="median", add_indicator=True)),
+        ("scaler", MinMaxScaler())
+    ])
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("extra_cols", extra_cols, ["donor_age", "recipient_age"]),
+            ("column_dropper", "drop", columns_to_drop),
+            ("hla", hla_pipeline, ["HLA_match"]),
+            ("bool", bool_pipeline, bool_cols),
+            ("one_hot", cat_pipeline, cat_cols)
+        ],
+        remainder=remainder_pipeline
+    )
+
+    return preprocessor
+
+
 def build_pipeline(model, preprocessor, use_smote=False):
     steps = [("preprocessor", preprocessor)]
 
@@ -343,7 +488,6 @@ def get_model_family(model_name: str):
     return "unsupported"
 
 
-
 def log_shap_explanations(
     pipeline,
     X_train,
@@ -431,15 +575,14 @@ def log_shap_explanations(
         mlflow.log_artifact(beeswarm_path, artifact_path="shap")
 
 
-
-
 def run_experiment(
     experiment,
     X_train,
     y_train,
     X_test,
     y_test,
-    task
+    task,
+    cfg
 ):
     n_splits = 5
 
@@ -466,8 +609,7 @@ def run_experiment(
         })
 
     # Create preprocessor instance
-    preprocessor_instance = PreProcessor()
-    preprocessor = preprocessor_instance.preprocessor
+    preprocessor = build_preprocessor(cfg)
 
     pipeline = build_pipeline(
         model=model,
@@ -522,6 +664,7 @@ def run_experiment(
             k: v for k, v in best_model.get_params().items()
             if isinstance(v, (str, int, float, bool))
         })
+
         mlflow.log_metric("best_cv_score", score)
 
     else:
@@ -612,6 +755,13 @@ def build_run_name(exp, task):
         if exp.get("predict_proba"):
             parts.append("proba")
 
+    if not exp["age_gap"]:
+        parts.append("noagegap")
+
+    if not exp["age_bin"]:
+        parts.append("noagebin")
+
+
     return "_".join(parts)
 
 
@@ -632,7 +782,9 @@ def run_mlflow(df, cfg):
         "use_clf": cfg.regression.use_clf,
         "predict_proba": cfg.regression.predict_proba,
         "tuning_method": cfg.tuning.method,
-        "explain": cfg.shap
+        "explain": cfg.shap,
+        "age_bin": cfg.fe.age_gap,
+        "age_gap": cfg.fe.age_bin
     }
 
     run_name = build_run_name(exp, cfg.task)
@@ -700,6 +852,7 @@ def run_mlflow(df, cfg):
             X_test=X_test,
             y_test=y_test,
             task=cfg.task,
+            cfg=cfg
         )
 
         import_model(run_name, cfg.task, experiment_model.model_uri)
