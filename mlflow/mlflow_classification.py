@@ -51,14 +51,18 @@ from mlflow.models import infer_signature
 # Third-party imports - BentoML
 import bentoml
 
+# Third-party imports - Explainability
+import shap
+import matplotlib.pyplot as plt
+
 # Local imports
 from mlflow_experiments import (
     MODEL_REGISTRY_CLASSIFICATION,
     MODEL_REGISTRY_REGRESSION,
-    PARAM_GRIDS
+    PARAM_GRIDS,
+    MODEL_FAMILIES
 )
 from pre_processor import PreProcessor
-
 
 def check_mlflow_server(host="127.0.0.1", port=5000, timeout=2):
     """Check if MLflow server is running"""
@@ -332,6 +336,103 @@ def predict(bento_model, testdata):
     return prediction
 
 
+def get_model_family(model_name: str):
+    for family, models in MODEL_FAMILIES.items():
+        if model_name in models:
+            return family
+    return "unsupported"
+
+
+
+def log_shap_explanations(
+    pipeline,
+    X_train,
+    task,
+    model_name,
+    max_samples=1000
+):
+    preprocessor = pipeline.named_steps["preprocessor"]
+    model = pipeline.named_steps["classifier"]
+
+    model_family = get_model_family(model_name)
+    if model_family == "unsupported":
+        print("Unsupported model")
+        return
+
+    X_transformed = preprocessor.transform(X_train)
+
+    if hasattr(X_transformed, "toarray"):
+        X_transformed = X_transformed.toarray()
+
+    feature_names = preprocessor.get_feature_names_out()
+
+    # --- Subsample for speed ---
+    if X_transformed.shape[0] > max_samples:
+        idx = np.random.choice(X_transformed.shape[0], max_samples, replace=False)
+        X_transformed = X_transformed[idx]
+
+    # --- Create explainer + SHAP values ---
+    if model_family == "tree":
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_transformed)
+
+        if task == "classification":
+            # Binary classification handling
+            if isinstance(shap_values, list):
+                shap_to_plot = shap_values[1]
+            else:
+                # shape = (n_samples, n_features, n_classes)
+                shap_to_plot = shap_values[:, :, 1]
+        else:
+            # Regression → single output
+            shap_to_plot = shap_values
+
+    else:  # linear models
+        background = shap.sample(X_transformed, min(100, X_transformed.shape[0]))
+
+        explainer = shap.LinearExplainer(
+            model,
+            background,
+            feature_perturbation="interventional"
+        )
+
+        shap_to_plot = explainer.shap_values(X_transformed)
+
+    # --- Plot + log ---
+    with tempfile.TemporaryDirectory() as tmpdir:
+        bar_path = os.path.join(tmpdir, f"shap_{task}_bar.png")
+        beeswarm_path = os.path.join(tmpdir, f"shap_{task}_beeswarm.png")
+
+        # Bar plot (global importance)
+        shap.summary_plot(
+            shap_to_plot,
+            X_transformed,
+            feature_names=feature_names,
+            plot_type="bar",
+            max_display=30,
+            show=False
+        )
+        plt.savefig(bar_path, bbox_inches="tight")
+        plt.close()
+
+        # Beeswarm (distribution + direction)
+        shap.summary_plot(
+            shap_to_plot,
+            X_transformed,
+            feature_names=feature_names,
+            plot_type="dot",
+            max_display=30,
+            show=False
+        )
+        plt.savefig(beeswarm_path, bbox_inches="tight")
+        plt.close()
+
+        mlflow.log_artifact(bar_path, artifact_path="shap")
+        mlflow.log_artifact(beeswarm_path, artifact_path="shap")
+
+
+
+
 def run_experiment(
     experiment,
     X_train,
@@ -425,6 +526,15 @@ def run_experiment(
 
     else:
         best_model = pipeline.fit(X_tr, y_tr)
+
+    if experiment["explain"]:
+        log_shap_explanations(
+            pipeline=best_model,
+            X_train=X_tr,
+            task=task,
+            model_name=experiment["model"]
+        )
+
 
     y_pred_train = best_model.predict(X_tr)
     y_pred_cv = cross_val_predict(
@@ -521,7 +631,8 @@ def run_mlflow(df, cfg):
         "gan_1": cfg.gan_params.gan_1,
         "use_clf": cfg.regression.use_clf,
         "predict_proba": cfg.regression.predict_proba,
-        "tuning_method": cfg.tuning.method
+        "tuning_method": cfg.tuning.method,
+        "explain": cfg.shap
     }
 
     run_name = build_run_name(exp, cfg.task)
@@ -540,7 +651,6 @@ def run_mlflow(df, cfg):
         })
 
         if cfg.task == "regression" and cfg.regression.use_clf:
-
             experiment = mlflow.get_experiment_by_name(
                 "bone-marrow-classification")
 

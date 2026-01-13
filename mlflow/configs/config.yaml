@@ -7,6 +7,7 @@ model: rf
 tune: true
 smote: false
 gan: false
+shap: false
 
 cv:
   folds: 5
@@ -17,7 +18,7 @@ gan_params:
   gan_1: 20
 
 regression:
-  use_clf: false
+  use_clf: true
   predict_proba: true
 
 tuning:

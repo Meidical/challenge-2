@@ -84,3 +84,8 @@ PARAM_GRIDS = {
         "classifier__l1_ratio": [0.1, 0.3, 0.5, 0.7, 0.9],
     }
 }
+
+MODEL_FAMILIES = {
+    "tree": ['rf', "et", "xgb", "lgbm"],
+    "linear": ['rr', 'lr', 'enet']
+}
