@@ -21,7 +21,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import FunctionTransformer, Pipeline
 from sklearn.preprocessing import (
-    MinMaxScaler, 
+    MinMaxScaler,
     OneHotEncoder
 )
 
@@ -73,6 +73,7 @@ from mlflow_experiments import (
 )
 from pre_processor import PreProcessor
 
+
 def check_mlflow_server(host="127.0.0.1", port=5000, timeout=2):
     """Check if MLflow server is running"""
     try:
@@ -80,6 +81,29 @@ def check_mlflow_server(host="127.0.0.1", port=5000, timeout=2):
         urllib.request.urlopen(url, timeout=timeout)
         return True
     except (urllib.error.URLError, urllib.error.HTTPError):
+        return False
+
+
+def kill_mlflow_server(port=5000):
+    """Kill any process running on the specified port"""
+    try:
+        # Find process using the port
+        result = subprocess.run(
+            ["lsof", "-ti", f":{port}"],
+            capture_output=True,
+            text=True
+        )
+
+        if result.stdout.strip():
+            pids = result.stdout.strip().split('\n')
+            for pid in pids:
+                print(f"Killing process {pid} on port {port}...")
+                subprocess.run(["kill", "-9", pid])
+            time.sleep(1)  # Wait for process to die
+            return True
+        return False
+    except Exception as e:
+        print(f"Error killing process on port {port}: {e}")
         return False
 
 
@@ -117,11 +141,8 @@ def start_mlflow_server(host="127.0.0.1", port=5000):
 
 def ensure_mlflow_running(host="127.0.0.1", port=5000):
     """Ensure MLflow server is running, start it if not"""
-    if check_mlflow_server(host, port):
-        print(f"MLflow server is already running at http://{host}:{port}")
-        return None
-    else:
-        return start_mlflow_server(host, port)
+    kill_mlflow_server()
+    return start_mlflow_server(host, port)
 
 
 def load_dataset(file_path: str):
@@ -246,7 +267,6 @@ def feature_engineering(X, cfg):
         X["_dummy"] = 0
         features.append("_dummy")
 
-
     return X[features]
 
 
@@ -266,7 +286,6 @@ def make_feature_names_out(cfg):
         return np.array(names, dtype=object)
 
     return _feature_names_out
-
 
 
 def parse_hla_match(X):
@@ -316,7 +335,8 @@ def build_preprocessor(cfg):
     ])
 
     hla_pipeline = Pipeline([
-        ("parser", FunctionTransformer(parse_hla_match, feature_names_out="one-to-one")),
+        ("parser", FunctionTransformer(
+            parse_hla_match, feature_names_out="one-to-one")),
         ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
         ("scaler", MinMaxScaler())
     ])
@@ -512,7 +532,8 @@ def log_shap_explanations(
 
     # --- Subsample for speed ---
     if X_transformed.shape[0] > max_samples:
-        idx = np.random.choice(X_transformed.shape[0], max_samples, replace=False)
+        idx = np.random.choice(
+            X_transformed.shape[0], max_samples, replace=False)
         X_transformed = X_transformed[idx]
 
     # --- Create explainer + SHAP values ---
@@ -532,7 +553,8 @@ def log_shap_explanations(
             shap_to_plot = shap_values
 
     else:  # linear models
-        background = shap.sample(X_transformed, min(100, X_transformed.shape[0]))
+        background = shap.sample(
+            X_transformed, min(100, X_transformed.shape[0]))
 
         explainer = shap.LinearExplainer(
             model,
@@ -678,7 +700,6 @@ def run_experiment(
             model_name=experiment["model"]
         )
 
-
     y_pred_train = best_model.predict(X_tr)
     y_pred_cv = cross_val_predict(
         best_model, X_tr, y_tr, cv=cv, verbose=10, n_jobs=-1)
@@ -760,7 +781,6 @@ def build_run_name(exp, task):
 
     if not exp["age_bin"]:
         parts.append("noagebin")
-
 
     return "_".join(parts)
 
@@ -867,9 +887,6 @@ def main(cfg: DictConfig):
         "port": 5000
     }
 
-    # Ensure MLflow server is running
-    ensure_mlflow_running(host=mlflow_run["host"], port=mlflow_run["port"])
-
     # Set MLflow tracking URI
     mlflow.set_tracking_uri(
         f"http://{mlflow_run['host']}:{mlflow_run['port']}")
@@ -884,4 +901,5 @@ def main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
+    bootstrap_mlflow = ensure_mlflow_running()
     main()
