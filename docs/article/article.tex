@@ -66,71 +66,28 @@
 \maketitle
 
 \begin{abstract}
-    Pediatric allogeneic
-    hematopoietic stem cell transplantation (HSCT) is a potentially
-    curative therapy for malignant and non-malignant diseases, but
-    outcomes depend strongly on donor-recipient compatibility and graft
-    characteristics. Donor selection is therefore a high-stakes, timesensitive decision where clinicians must balance immunogenetic risk
-    against urgency and donor availability.
-    This work proposes a two-stage decision-support pipeline aligned
-    with two course modules. In the first stage (Planning and DecisionMaking), a multi-criteria decision-making model integrates
-    immunogenetic compatibility and clinical constraints to structure the
-    allocation problem. In the second stage (Machine Learning), a
-    predictive model estimates recipient survival time for each feasible
-    donor-recipient pairing using pre-transplant donor, recipient, and graft
-    variables from a published pediatric unrelated-donor cohort. Predicted
-    outcomes are then incorporated as an explicit criterion within the
-    multi-criteria framework to produce an ordered list of candidate
-    matches for physician review. The overall goal is to support
-    transparent, reproducible donor-recipient matching and allocation
-    decisions in pediatric HSCT.\\
+Pediatric allogeneic hematopoietic stem cell transplantation (HSCT) is a potentially curative therapy for malignant and non-malignant diseases, but outcomes depend strongly on donor--recipient compatibility and graft characteristics. Donor selection is therefore a high-stakes, time-sensitive decision in which clinicians must balance immunogenetic risk against urgency and donor availability.
+This work proposes a decision-support system integrated with predictive artificial intelligence models. Multi-criteria decision-making methods, namely the Analytic Hierarchy Process (AHP) and the Technique for Order Preference by Similarity to Ideal Solution (TOPSIS), are employed to rank and select the most suitable donor for a given recipient. One of the decision criteria is the predicted post-transplant survival time of the recipient, which is estimated using a machine learning model trained on a published pediatric unrelated-donor cohort.
+The overall goal is to support transparent, reproducible, and clinically meaningful donor--recipient matching and allocation decisions in pediatric HSCT.
 \end{abstract}
+
 
 \begin{IEEEkeywords}
     Pediatric hematopoietic stem cell transplantation,
-    donor-recipient matching, HLA compatibility, machine learning, data-driven decision support, multi-criteria decision making.
+    donor-recipient matching, machine learning, data-driven decision support, multi-criteria decision making
 \end{IEEEkeywords}
 
-\begin{table}[htbp]
-    \caption{List of acronyms and abbreviations}
-    \label{tab:acronyms}
-    \centering
-    \begin{tabular}{ll}
-        \hline
-        \textbf{Acronym} & \textbf{Meaning}                                    \\
-        \hline
-        ADTree           & Alternating Decision Tree                           \\
-        ANN              & Artificial Neural Networks                          \\
-        CMV              & Cytomegalovirus                                     \\
-        EBMT             & European Group for Blood and Marrow Transplantation \\
-        EHR              & Electronic Health Record                            \\
-        ENET             & Elastic-Net                                         \\
-        ET               & Extra Trees                                         \\
-        GAN              & Generative Adversarial Network                      \\
-        GVHD             & Graft-versus-Host Disease                           \\
-        HLA              & Human Leukocyte Antigen                             \\
-        HSCT             & Hematopoietic Stem Cell Transplantation             \\
-        LightGBM         & Light Gradient Boosting Machine                     \\
-        ML               & Machine Learning                                    \\
-        MADM             & Multiple Attribute Decision Making                  \\
-        SMOTE            & Synthetic Minority Over-sampling Technique          \\
-        XGBoost          & eXtreme Gradient Boosting                           \\
-        \hline
-    \end{tabular}
-\end{table}
 
 \section{Introduction}
 Allogeneic hematopoietic stem cell transplantation (HSCT) is an established therapeutic option for a wide range of malignant and non-malignant hematologic conditions in pediatric populations and often represents the standard of care in high-risk cases; however, it carries substantial clinical risks, such as graft-versus-host disease and transplant-related mortality, which necessitate careful donor selection \cite{Diaz2024}. In clinical practice, transplant success is tightly linked to donorrecipient compatibility and to graft characteristics (the material transplanted from the donor to the recipient, such as CD34$^{+}$ and CD3$^{+}$ cells), because immunologic disparity can increase complications such as graft-versus-host disease (GVHD), graft failure, and transplant-related mortality \cite{Tiercy2016}. Donor selection is typically guided by high-resolution Human Leukocyte Antigen (HLA) matching and additional donor/recipient factors (e.g., Cytomegalovirus (CMV) status, age, stem cell source - bone marrow or peripheral blood stem cells), while acknowledging that not all patients have access to an ideal matched sibling and that alternative donor options are frequently required \cite{Tiercy2016}. Beyond “match counts,” functional and locus-specific approaches, referring to specific genomic positions associated with immunogenetic variability, can refine immunological risk; for example, classification of HLA-DPB1 mismatches into permissive vs non-permissive groups has been associated with clinically relevant differences in outcomes \cite{Fleischhauer2012}. In parallel, the availability of large transplantation registries and richer clinical data has motivated machine learning (ML) approaches to outcome prediction (e.g., early mortality, GVHD risk). Prior work has shown that ML can produce clinically meaningful risk stratification, but performance and generalizability depend heavily on data preparation choices and robust validation designs \cite{Shouval2014}, \cite{Gupta2020}, \cite{Shouval2015}, \cite{Arai2019}, \cite{Tang2020}. \\
 
-\textbf{Problem statement:} Despite established donor selection principles, there is still a lack of integrated, transparent frameworks that (i) formalize donor-recipient allocation under multiple clinical criteria and (ii) incorporate data-driven outcome predictions using only pre-decision variables. Proposed solution: This project proposes a two-stage decision-support system. First, a planning and decision-making layer structures donor allocation using a multi-criteria decisionmaking framework. Second, a machine learning model predicts survival time for each feasible donor-recipient pairing using a dataset \cite{Sikora2010} derived from a published pediatric unrelated-donor cohort \cite{Kalwak2010}. The predicted outcomes are incorporated as one of the criteria in the multi-criteria model, producing a ranked list of feasible matches for clinical review. \\
-
-\textbf{Proposed solution:} This project proposes a two-stage decision-support system. First, a planning and decision-making layer structures donor allocation using a multi-criteria decisionmaking framework. Second, a machine learning model predicts survival time for each feasible donor-recipient pairing using a dataset \cite{Sikora2010} derived from a published pediatric unrelated-donor cohort \cite{Kalwak2010}. The predicted outcomes are incorporated as one of the criteria in the multi-criteria model, producing a ranked list of feasible matches for clinical review.
+Despite established donor selection principles, there is still a lack of integrated, transparent frameworks that (i) formalize donor-recipient allocation under multiple clinical criteria and (ii) incorporate data-driven outcome predictions using only pre-decision variables. Proposed solution: This project proposes a decision-support system integrated with predictive artificial intelligence models. Donor allocation is formulated as a multi-criteria decision-making problem and addressed using the Analytic Hierarchy Process (AHP) to derive criterion weights and the Technique for Order Preference by Similarity to Ideal Solution (TOPSIS) to rank feasible donor--recipient pairings. Recipient post-transplant survival time is estimated by a machine learning model trained on a dataset \cite{Sikora2010} derived from a published pediatric unrelated-donor cohort \cite{Kalwak2010}. The predicted survival outcome is incorporated as one of the decision criteria, yielding an ordered list of candidate matches for clinical review.
 
 \section{State-of-the-Art}
 
 Allogeneic hematopoietic stem cell transplantation (HSCT) stands as the unique curative option for various pediatric patients with malignant and non-malignant hematologic diseases \cite{Diaz2024}. The success of the transplant critically depends on Human Leukocyte Antigen (HLA) compatibility between the donor and recipient. Although the gold standard is a 10/10 genotypic match (HLA-A, -B, -C, -DRB1, -DQB1), approximately 70\% of patients do not have a compatible family donor, necessitating the use of unrelated or haploidentical donors \cite{Shouval2015}.
 
-The complexity of immunogenetics, with thousands of known HLA alleles \cite{Shouval2015}, combined with the heterogeneity of clinical data, has rendered traditional statistical approaches (such as Cox regression) insufficient for capturing complex non-linear interactions \cite{Shouval2014}. Consequently, the application of Machine Learning (ML) algorithms has emerged as a vital tool for predicting outcomes (survival, Graft-versus-Host Disease (GVHD)) and supporting donor allocation \cite{Shouval2014}, \cite{Gupta2020}.
+The complexity of immunogenetics, with thousands of known HLA alleles, combined with the heterogeneity of clinical data, has rendered traditional statistical approaches (such as Cox regression) insufficient for capturing complex non-linear interactions. Consequently, the application of Machine Learning (ML) algorithms has emerged as a vital tool for predicting outcomes (survival, Graft-versus-Host Disease (GVHD)) and supporting donor allocation \cite{Shouval2014}, \cite{Gupta2020}.
 
 This document reviews the literature, focusing on data preparation and model validation methodologies.
 
@@ -139,11 +96,11 @@ This document reviews the literature, focusing on data preparation and model val
 The quality of ML models depends intrinsically on data preparation. The literature identifies three critical vectors in this phase:\\
 
 \begin{enumerate}
-    \item \textbf{HLA resolution and complexity} high-resolution typing (allelic level) is fundamental. Lee et al. demonstrated in a landmark study that high-resolution matching at HLA-A, -B, -C, and -DRB1 is associated with higher survival rates \cite{Lee2007}. Simple binary categorization (matched/mismatched) is insufficient; recent models incorporate the distinction between ``permissive'' and ``non-permissive'' mismatches, particularly at the HLA-DPB1 locus, based on T-cell epitopes \cite{Fleischhauer2012}. Fleischhauer et al. validated that non-permissive mismatches significantly increase mortality, making this a crucial feature for predictive algorithms [3]. \\
+    \item \textbf{HLA resolution and complexity: } high-resolution typing (allelic level) is fundamental. Lee et al. \cite{Lee2007} demonstrated in a landmark study that high-resolution matching at HLA-A, -B, -C, and -DRB1 is associated with higher survival rates. Simple binary categorization (matched/mismatched) is insufficient; recent models incorporate the distinction between ``permissive'' and ``non-permissive'' mismatches, particularly at the HLA-DPB1 locus, based on T-cell epitopes. Fleischhauer et al. \cite{Fleischhauer2012} validated that non-permissive mismatches significantly increase mortality, making this a crucial feature for predictive algorithms. \\
 
-    \item \textbf{Specific clinical and pediatric variables} beyond HLA, feature engineering must include donor and graft-specific factors. Kałwak et al., in a study focused on pediatrics, highlighted that higher doses of CD34\textsuperscript{+} and CD3\textsuperscript{+} cells in the graft promote better long-term survival without increasing the risk of severe GVHD \cite{Kalwak2010}. The inclusion of these quantitative biological variables enriches ML models. Additionally, Tang et al. innovated by using longitudinal vital sign data (e.g., temperature, blood pressure) extracted from Electronic Health Records (EHR), demonstrating that temporal trends (slopes) are stronger predictors of acute GVHD than static measurements \cite{Tang2020}. \\
+    \item \textbf{Specific clinical and pediatric variables: } beyond HLA, feature engineering must include donor and graft-specific factors. Kałwak et al. \cite{Kalwak2010}, in a study focused on pediatrics, highlighted that higher doses of CD34\textsuperscript{+} and CD3\textsuperscript{+} cells in the graft promote better long-term survival without increasing the risk of severe GVHD. The inclusion of these quantitative biological variables enriches ML models. Additionally, Tang et al. \cite{Tang2020}. innovated by using longitudinal vital sign data (e.g., temperature, blood pressure) extracted from Electronic Health Records (EHR), demonstrating that temporal trends (slopes) are stronger predictors of acute GVHD than static measurements.\\
 
-    \item \textbf{Missing data treatment and feature selection} real-world databases, such as those from the EBMT (European Group for Blood and Marrow Transplantation), contain noise and missing data. Shouval et al. discuss the need for robust preprocessing, including imputation and discretization \cite{Shouval2014}. Feature selection is critical to avoid hyper-dimensionality. For instance, in a data mining study involving 28,236 patients, the Alternating Decision Tree (ADTree) algorithm automatically selected 10 out of 20 possible variables, eliminating redundancies (e.g., combining donor/recipient Cytomegalovirus (CMV) serostatus into a single interaction variable) \cite{Shouval2015}.\\
+    \item \textbf{Missing data treatment and feature selection: } because real-world databases may contain noise and missing data, Shouval et al. \cite{Shouval2014} discuss the need for robust preprocessing, including imputation and discretization. Feature selection is critical to avoid hyper-dimensionality. For instance, in a data mining study involving 28,236 patients, the Alternating Decision Tree (ADTree) algorithm automatically selected 10 out of 20 possible variables, eliminating redundancies (e.g., combining donor/recipient Cytomegalovirus (CMV) serostatus into a single interaction variable) \cite{Shouval2015}.\\
 \end{enumerate}
 
 
@@ -155,26 +112,25 @@ The transition from classical statistical models to ML requires rigorous validat
     \item \textbf{Predictive algorithms} - recent literature favors algorithms that balance accuracy with clinical interpretability:
 
           \begin{itemize}
-              \item \textbf{Decision trees and ensemble methods:} Shouval et al. and Arai et al. successfully used the ADTree algorithm to predict mortality and GVHD, respectively \cite{Shouval2015}, \cite{Arai2019}. ADTree was preferred over Artificial Neural Networks (ANN) or Random Forests because it allows for the visualization of decision rules and interactions (e.g., the impact of disease stage varies by age), whereas ``black box'' models hide this logic \cite{Shouval2015}, \cite{Arai2019}.
+              \item \textbf{Decision trees and ensemble methods:} Shouval et al. \cite{Shouval2015} and Arai et al. \cite{Arai2019} successfully used the ADTree algorithm to predict mortality and GVHD, respectively. ADTree was preferred over Artificial Neural Networks (ANN) or Random Forests because it allows for the visualization of decision rules and interactions (e.g., the impact of disease stage varies by age), whereas ``black box'' models hide this logic.
 
-              \item \textbf{Penalized logistic regression:} Tang et al. used L2 regularization to handle collinearity in longitudinal vital sign data, outperforming baseline models that used only static characteristics \cite{Tang2020}.\\
+              \item \textbf{Penalized logistic regression:} Tang et al. \cite{Tang2020} used L2 regularization to handle collinearity in longitudinal vital sign data, outperforming baseline models that used only static characteristics.\\
           \end{itemize}
 
     \item \textbf{Validation methodologies} - robust validation is consistent across high-quality studies:
 
           \begin{itemize}
-              \item \textbf{Train/test split:} Arai et al. randomly divided a cohort of 26,695 patients into training (70\%) and validation (30\%) sets. The trained model was tested on the validation cohort, demonstrating clear risk stratification (hazard ratio 2.57 for high risk vs. low risk) \cite{Arai2019}.
+              \item \textbf{Train/test split:} Arai et al.  \cite{Arai2019}. randomly divided a cohort of 26,695 patients into training (70\%) and validation (30\%) sets. The trained model was tested on the validation cohort, demonstrating clear risk stratification (hazard ratio 2.57 for high risk vs. low risk).
 
-              \item \textbf{Cross-validation:} Both Shouval et al. and Gupta et al. advocate for the use of 10-fold cross-validation on the training set to optimize hyperparameters prior to final testing \cite{Shouval2014}, \cite{Shouval2015}.
+              \item \textbf{Cross-validation:} Both Shouval et al. \cite{Shouval2014} and Gupta et al. \cite{Gupta2020} advocate for the use of 10-fold cross-validation on the training set to optimize hyperparameters prior to final testing.
 
-              \item \textbf{Calibration:} accuracy (AUC) is not the only metric. Shouval et al. emphasize the importance of calibration (agreement between predicted and observed probability), demonstrating excellent consistency in their 100-day mortality model \cite{Shouval2014}.\\
+              \item \textbf{Calibration:} accuracy (AUC) is not the only metric. Shouval et al. \cite{Shouval2014} emphasize the importance of calibration (agreement between predicted and observed probability), demonstrating excellent consistency in their 100-day mortality model .\\
           \end{itemize}
 \end{enumerate}
 
-
 \subsection{From prediction to allocation}
 
-While ML models provide a risk score (prediction), clinical decision-making requires selecting the best donor among several available options (allocation). The literature suggests a ``prediction-to-decision'' gap \cite{Shouval2014}. Multiple Attribute Decision Making (MADM) methodologies, such as TOPSIS (Technique for Order Preference by Similarity to Ideal Solution), described by Tzeng \& Huang, allow for the integration of ML predictions (as criteria) into an ordered ranking of alternatives \cite{Tzeng2011}. This hybrid approach (ML to predict outputs, TOPSIS to rank candidates) represents an improvement for clinical decision support systems, transforming raw probabilities into actionable recommendations.
+While ML models provide a risk score (prediction), clinical decision-making requires selecting the best donor among several available options (allocation). The literature suggests a ``prediction-to-decision'' gap \cite{Shouval2014}. Multiple Attribute Decision Making (MADM) methodologies, such as TOPSIS (Technique for Order Preference by Similarity to Ideal Solution), described by Tzeng \& Huang \cite{Tzeng2011}, allow for the integration of ML predictions (as criteria) into an ordered ranking of alternatives. This hybrid approach (ML to predict outputs, TOPSIS to rank candidates) represents an improvement for clinical decision support systems, transforming raw probabilities into actionable recommendations.
 
 \section{Methodology}
 \subsection{Data Cleaning}
