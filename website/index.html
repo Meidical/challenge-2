@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Layout Tipo Sistema</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      background: #e6e6e6;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-family: system-ui, sans-serif;
+    }
+
+    .frame {
+      background: #f5f5f5;
+      border-radius: 16px;
+      padding: 16px;
+      width: 100%;
+      max-width: 1200px;
+      height: 650px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 16px;
+      height: 100%;
+    }
+
+    .panel {
+      background: #bfbfbf;
+      border-radius: 12px;
+      position: relative;
+      padding: 12px;
+    }
+
+    .panel.small {
+      height: 100%;
+    }
+
+    .panel.large {
+      height: 100%;
+    }
+
+    .label {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #333;
+    }
+
+    /* Scroll simulada */
+    .scroll-bar {
+      position: absolute;
+      top: 16px;
+      right: 8px;
+      width: 10px;
+      height: calc(100% - 32px);
+      background: #9a9a9a;
+      border-radius: 6px;
+    }
+
+    .scroll-thumb {
+      width: 100%;
+      height: 80px;
+      background: #7CFF8A;
+      border-radius: 6px;
+      margin-top: 40px;
+    }
+
+    /* Rodapé esquerdo */
+    .bottom-left {
+      display: grid;
+      grid-template-columns: 70px 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .pill {
+      background: #7CFF8A;
+      border-radius: 24px;
+      height: 44px;
+      padding: 0 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: #1f1f1f;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .pill.outline {
+      background: #7CFF8A;
+      border: none;
+    }
+    .action {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      min-width: 120px;
+      height: 44px;
+      background: #7CFF8A;
+      border-radius: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    .donor-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 1px solid #dee2e6;
+    }
+    .donor-card.selected {
+        border-color: #28a745 !important;
+        border-width: 2px !important;
+        background-color: #f8fff9;
+        box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2) !important;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="col-md-1">
+        <button class="pill border-0" style="min-width:100px;" onclick=Mostra(1)>Alocation</button>
+
+      </div>
+      <div class="col-md-1">
+        <button class="pill border-0" style="min-width:100px;" onclick=Mostra(2)>Transplantation</button>
+
+      </div>
+      <div clas="col-md-10"></div>
+    </div>
+    <div class="row">&nbsp</div>
+    <div class="row">
+      <div class="frame" id="primeiro">
+        <div class="layout">
+
+          <!-- Coluna esquerda -->
+          <div class="d-flex flex-column">
+            <div class="panel small flex-grow-1 d-flex flex-column">
+              <div class="fw-semibold mb-2">Waiting List</div>
+              <div class="flex-grow-1" id="waitingListContainer" style="overflow-y:auto; padding-right:18px;"></div>
+            </div>
+
+            <div class="bottom-left">
+              <div class="form-check form-switch m-0">
+                <input class="form-check-input" id="mainSwitch" type="checkbox" role="switch" style="
+            width:4.2em;
+            height:2.1em;
+            background-color:#5cff76;
+            border-color:#5cff76;
+            ">
+              </div>
+              <button class="pill border-0" id="submitBtn" style="min-width:140px;">Search</button>
+            </div>
+          </div>
+
+          <!-- Painel direito -->
+          <div class="panel large">
+            <div id="resultChecklistContainer" class="flex-grow-1" style="overflow-y:auto; padding-right:18px;">
+            </div>
+            <button class="action border-0">Confirmar</button>
+          </div>
+
+        </div>
+      </div>
+      <div class="frame" id="segundo" style="display: none;">
+        <!--segunda pagina-->
+        <div class="layout">
+
+          <!-- Coluna esquerda -->
+          <div class="d-flex flex-column">
+            <div class="panel small flex-grow-1 d-flex flex-column">
+              <div class="fw-semibold mb-2">Waiting List</div>
+              <div class="flex-grow-1" id="waitingListContainer" style="overflow-y:auto; padding-right:18px;"></div>
+            </div>
+            <div id="inputs" class="p-3 mt-3" style="background:#bfbfbf; border-radius:12px;">
+
+              <!-- Linha 1: select -->
+              <div class="mb-2">
+                <label for="sourceSelect" class="form-label fw-semibold">Source</label>
+                <select id="sourceSelect" class="form-select"
+                  style="background:#bfbfbf; color:#1f1f1f; border:1px solid #888; border-radius:6px;">
+                  <option value="bonemarrow">Bonemarrow</option>
+                  <option value="peripheral">Peripheral Blood</option>
+                </select>
+              </div>
+
+              <!-- Linha 2: inputs decimais lado a lado -->
+              <div class="d-flex gap-2">
+                <div class="flex-fill">
+                  <label for="decimal1" class="form-label fw-semibold">Value 1</label>
+                  <input type="number" step="0.01" id="decimal1" class="form-control"
+                    style="background:#bfbfbf; border:1px solid #888; border-radius:6px; color:#1f1f1f;">
+                </div>
+                <div class="flex-fill">
+                  <label for="decimal2" class="form-label fw-semibold">Value 2</label>
+                  <input type="number" step="0.01" id="decimal2" class="form-control"
+                    style="background:#bfbfbf; border:1px solid #888; border-radius:6px; color:#1f1f1f;">
+                </div>
+              </div>
+            </div>
+            <div class="bottom-left">
+              <button class="pill border-0" id="submitBtn" style="min-width:140px;">Search</button>
+            </div>
+          </div>
+          <!-- Painel direito -->
+          <div class="panel large">
+            <div class="fw-semibold mb-2">Checklist 2</div>
+
+            <div id="resultChecklistContainer" class="flex-grow-1" style="overflow-y:auto; padding-right:18px;">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="row">&nbsp</div>
+    <div class="row">
+      <div class="col-md-9"></div>
+      <div class="col-md-2">
+        <img src="image/logo.svg" alt="Logo" class="img-fluid">
+      </div>
+      <div class="col-md-1"></div>
+    </div>
+  </div>
+  <script>
+    function Mostra(id) {
+      const primeiro = document.getElementById('primeiro');
+      const segundo = document.getElementById('segundo');
+
+      if (id === 1) {
+        primeiro.style.display = 'block';  // Mostra o primeiro
+        segundo.style.display = 'none';    // Esconde o segundo
+      } else if (id === 2) {
+        primeiro.style.display = 'none';   // Esconde o primeiro
+        segundo.style.display = 'block';   // Mostra o segundo
+      }
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      const sw = document.getElementById('mainSwitch');
+      const btn = document.getElementById('submitBtn');
+      function atualizarTexto() {
+        if (sw.checked) {
+          btn.innerText = 'Search - Peripheral Blood';
+        } else {
+          btn.innerText = 'Search - Bonemarrow';
+        }
+      }
+      atualizarTexto();
+      sw.addEventListener('change', atualizarTexto);
+    });
+    //
+    async function loadWaitingList() {
+      try {
+        const mockData = [
+          {
+            "recipient_id": "IR001",
+            "recipient_name": "Rodrigo Artur da Silva",
+            "recipient_age": "12,3",
+            "recipient_gender": "male",
+            "disease_group": "malignant",
+            "risk_group": "low"
+          },
+          { "recipient_id": "IR002", "recipient_name": "Maria Oliveira Souza", "recipient_age": "45,0", "recipient_gender": "female", "disease_group": "benign", "risk_group": "high" },
+          { "recipient_id": "IR003", "recipient_name": "Carlos Eduardo Santos", "recipient_age": "28,5", "recipient_gender": "male", "disease_group": "malignant", "risk_group": "medium" },
+          { "recipient_id": "IR004", "recipient_name": "Ana Beatriz Ferreira", "recipient_age": "34,2", "recipient_gender": "female", "disease_group": "malignant", "risk_group": "high" },
+          { "recipient_id": "IR005", "recipient_name": "Luiz Felipe Pereira", "recipient_age": "09,1", "recipient_gender": "male", "disease_group": "benign", "risk_group": "low" },
+          { "recipient_id": "IR006", "recipient_name": "Juliana Costa Lima", "recipient_age": "52,7", "recipient_gender": "female", "disease_group": "malignant", "risk_group": "medium" },
+          { "recipient_id": "IR007", "recipient_name": "Marcos Venícius Rocha", "recipient_age": "19,4", "recipient_gender": "male", "disease_group": "benign", "risk_group": "low" },
+          { "recipient_id": "IR008", "recipient_name": "Fernanda Alencar", "recipient_age": "41,8", "recipient_gender": "female", "disease_group": "malignant", "risk_group": "high" },
+          { "recipient_id": "IR009", "recipient_name": "Ricardo Gomes Silva", "recipient_age": "60,3", "recipient_gender": "male", "disease_group": "benign", "risk_group": "medium" },
+          { "recipient_id": "IR010", "recipient_name": "Patrícia Mendes", "recipient_age": "25,0", "recipient_gender": "female", "disease_group": "malignant", "risk_group": "low" }
+        ];
+
+        // Se quiser testar o fetch real, descomente as duas linhas abaixo:
+        // const response = await fetch('/api/recipients');
+        // const data = await response.json();
+
+        const data = mockData; 
+        const container = document.getElementById('waitingListContainer');
+        if (!container) return; 
+
+        container.innerHTML = '';
+
+        data.forEach(item => {
+          // Criamos o ID único para o checkbox
+          const checkboxId = `waiting_${item.recipient_id}`;
+
+          const div = document.createElement('div');
+          div.className = 'form-check mb-2';
+
+          // Corrigido: usamos item.recipient_id e checkboxId corretamente
+          div.innerHTML = `
+                    <input class="form-check-input" type="checkbox" id="${checkboxId}" value="${item.recipient_id}">
+                    <label class="form-check-label" for="${checkboxId}">
+                      <strong>${item.recipient_name}</strong> 
+                      <small class="text-muted">(${item.recipient_age} anos - ${item.risk_group})</small>
+                    </label>
+                  `;
+          container.appendChild(div);
+        });
+
+      } catch (error) {
+        console.error('Erro ao carregar Waiting List:', error);
+      }
+    }
+    document.addEventListener('DOMContentLoaded', loadWaitingList);
+    //botao para post
+   document.getElementById('submitBtn').addEventListener('click', async () => {
+    const isPeripheral = document.getElementById('mainSwitch').checked;
+    
+    // Captura apenas os IDs dos selecionados
+    const selectedIds = Array.from(
+        document.querySelectorAll('#waitingListContainer input[type="checkbox"]:checked')
+    ).map(cb => cb.value); // Usando o value que definimos na carga da lista
+
+    if (selectedIds.length === 0) {
+        alert('Selecione pelo menos um paciente da Waiting List.');
+        return;
+    }
+
+    // Define a string baseada no estado do switch
+    const source = isPeripheral ? "peripheral blood" : "bone marrow";
+    
+    const payload = {
+        stem_cell_source: source
+    };
+
+    try {
+        // Simulando a resposta para o primeiro paciente selecionado
+        // Na vida real, você faria o fetch para: `/api/recipients/${selectedIds[0]}/donor-matches`
+        console.log(`Buscando matches para ${selectedIds[0]} com fonte: ${source}`);
+
+        // --- MOCKDATA DOS DOADORES ---
+        const mockDonors = [
+            { "donor_id": "D001", "donor_name": "Ana Maria Vigário", "donor_age_group": "18-35", "HLA_score": "10/10", "CMV_serostatus": "0", "gender_match": "matched", "expected_survival_time": "365", "ABO_match": "matched" },
+            { "donor_id": "D002", "donor_name": "João Pedro Silva", "donor_age_group": "36-45", "HLA_score": "9/10", "CMV_serostatus": "1", "gender_match": "mismatched", "expected_survival_time": "280", "ABO_match": "matched" },
+            { "donor_id": "D003", "donor_name": "Carla Antunes", "donor_age_group": "18-35", "HLA_score": "8/10", "CMV_serostatus": "0", "gender_match": "matched", "expected_survival_time": "150", "ABO_match": "minor mismatch" }
+        ];
+
+        // Simulação de chamada Fetch
+        // const response = await fetch(`/api/recipients/${selectedIds[0]}/donor-matches`, {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify(payload)
+        // });
+        // const result = await response.json();
+
+        const result = mockDonors; 
+        fillResultChecklist(result);
+
+    } catch (error) {
+        console.error('Erro ao processar matches:', error);
+    }
+});
+
+// Função para preencher a lista de resultados (Donors)
+function fillResultChecklist(donors) {
+    const container = document.getElementById('resultChecklistContainer');
+    if (!container) return;
+
+    container.innerHTML = '<h5 class="mb-3">Donors Found:</h5>';
+
+    donors.forEach(donor => {
+        const div = document.createElement('div');
+        // Adicionamos a classe 'donor-card' para o estilo CSS
+        div.className = 'card mb-2 shadow-sm border-start border-primary donor-card';
+        div.style.borderLeftWidth = '5px';
+        div.dataset.donorId = donor.donor_id; // Guarda o ID para uso futuro
+
+        div.innerHTML = `
+            <div class="card-body p-2">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="m-0">${donor.donor_name}</h6>
+                    <span class="badge bg-primary">HLA: ${donor.HLA_score}</span>
+                </div>
+                <div style="font-size: 0.85em;" class="mt-1 text-muted">
+                    <span><strong>ABO:</strong> ${donor.ABO_match}</span> | 
+                    <span><strong>Survival:</strong> ${donor.expected_survival_time} days</span>
+                </div>
+            </div>
+        `;
+
+        div.addEventListener('click', function() {
+            document.querySelectorAll('.donor-card').forEach(c => c.classList.remove('selected'));
+            this.classList.add('selected');
+            console.log("Doador selecionado:", donor.donor_id);
+        });
+
+        container.appendChild(div);
+    });
+}
+  </script>
+
+</body>
+
+</html>

@@ -10,9 +10,7 @@
 import os
 import sys
 import ast
-from urllib import response
 import pandas as pd
-import numpy as np
 import requests, json
 # pip install bentoml
 # pip install requests
@@ -182,9 +180,9 @@ def aggregate_data(id, donor_list_path, recipient_list_path, stem_cell_source):
             predicted_survival_time = None
         except ValueError:
             print(f"Erro ao fazer parse do JSON: {response.text}")
-            predicted_survival_time = None
-        
+            predicted_survival_time = None        
         print(response)
+
       
       # Armazena os dados agregados      
         aggregated_data["Donors"].append({
@@ -197,7 +195,7 @@ def aggregate_data(id, donor_list_path, recipient_list_path, stem_cell_source):
             "Donor Age Group": donor_age_group,
             "Gender Match": gender_match,
             "ABO Match": ABO_match,
-            "Expected Survaival Status": "not_survived" if is_dead == 1 else "survived",
+            "Expected Survival Status": "not_survived" if is_dead == 1 else "survived",
             "Expected Survival Time": predicted_survival_time
         })
 
@@ -213,14 +211,10 @@ def aggregate_data(id, donor_list_path, recipient_list_path, stem_cell_source):
             "Donor Age Group",
             "Gender Match",
             "ABO Match",
-            "Expected Survaival Status",
+            "Expected Survival Status",
             "Expected Survival Time"
         ]]
-    print("\n### Aggregated Data ###")
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.width', None)
-    pd.set_option('display.max_colwidth', None)
-    print(aggregated_data)
+
     return aggregated_data
 
 
@@ -235,4 +229,4 @@ if __name__ == "__main__":
     stem_cell_source = 'PBSC'
 
     aggregated_data = aggregate_data(test_id, donors_CSV_PATH, recipient_CSV_PATH, stem_cell_source)
-    #print(aggregated_data)
+    print(aggregated_data)

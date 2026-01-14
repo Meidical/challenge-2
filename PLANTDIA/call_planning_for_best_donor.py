@@ -43,13 +43,23 @@ def call_planning_for_best_donor():
         else:            
             break
     dataframe = call_prepare_data_for_topsis(stem_cell_source)    
-    result = calculate_topsis(dataframe, stem_cell_source, verbose=True)
+    df_TOPSIS = calculate_topsis(dataframe, stem_cell_source, verbose=True)
+    
+
+    ### Resultado final, que resulta na agregação dos dados dador/receptor com os resultados do TOPSIS ###
+    data=dataframe.copy().drop(columns=['recipient_ID', 'donor_ID', 'Donor Name', 'Recipient Name'])
+
+    result = pd.concat([df_TOPSIS, data], axis=1)
+    result = result.sort_values(by='TOPSIS Score', ascending=False)
+    result.rename(columns={'TOPSIS Score': 'TOPSIS Rank'}, inplace=True)  
+
+    print("\n### Aggregated Data with TOPSIS Results ###")
+    print(result)
     return result
 
 
 # Execução direta para testes
 if __name__ == "__main__":
     best_donor = call_planning_for_best_donor()
-    print("\n### Best Donor Result ###")
-    print(best_donor)
+
 
