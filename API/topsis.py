@@ -2,38 +2,25 @@ import numpy as np
 from pandas import DataFrame, Series
 from typing import Literal
 
-
 class Topsis:
     @staticmethod
     def get_deviation_from_ideal_col_TOPSIS(data_criteria_encoded: DataFrame, stem_cell_source: Literal["bone marrow", "pheripheral blood"]):
-        ordered_columns = [
-            'HLA_match',
-            'CMV_serostatus',
-            'donor_age_group',
-            'gender_match',
-            'ABO_match',
-            'expected_survival_time'
-        ]
-
-        data_criteria_encoded = data_criteria_encoded.loc[:, ordered_columns].copy(
-        )
+        data_criteria_encoded = data_criteria_encoded.loc[:, ordered_columns].copy()
 
         impact = np.array([1, -1, 1, 1, 1, 1])
 
         weights = get_criteria_weights_AHP(stem_cell_source)
 
         criteria_matrix = data_criteria_encoded.to_numpy()
-
+        
         matrix_normalized = normalize_matrix(criteria_matrix)
         matrix_weighted = weight_matrix(weights, matrix_normalized)
-
+        
         pos_ideal, neg_ideal = ideal_best_worst(matrix_weighted, impact)
-        pos_sep, neg_sep = deviation_from_ideal(
-            matrix_weighted, pos_ideal, neg_ideal)
+        pos_sep, neg_sep = deviation_from_ideal(matrix_weighted, pos_ideal, neg_ideal)
         deviations = similarity_to_PIS(pos_sep, neg_sep)
 
-        deviation_from_ideal_col = Series(
-            deviations, name='deviation_from_ideal')
+        deviation_from_ideal_col = Series(deviations, name="deviation_from_ideal")
         return deviation_from_ideal_col
 
 
@@ -153,7 +140,7 @@ def compute_weights(data_AHP: DataFrame):
 
 
 relations_BM = [
-    [1,     3,     2/3,   9,     7,     9],
+    [1,     3,     3/2,   9,     7,     9],
     [1/3,   1,     1/3,   3,     3,     5],
     [2/3,   3,     1,     7,     5,     7],
     [1/9,   1/9,   1/7,   1,     1,     3],
@@ -162,7 +149,7 @@ relations_BM = [
 ]
 
 relations_PB = [
-    [1,     3,     2/3,   9,     7,     9],
+    [1,     3,     3/2,   9,     7,     9],
     [1/3,   1,     1/3,   3,     3,     5],
     [2/3,   3,     1,     7,     5,     7],
     [1/9,   1/9,   1/7,   1,     1,     3],
@@ -171,10 +158,10 @@ relations_PB = [
 ]
 
 ordered_columns = [
-    'HLA_match',
-    'CMV_serostatus',
-    'donor_age_group',
-    'gender_match',
-    'ABO_match',
-    'expected_survival_time'
+    "HLA_match",
+    "CMV_status",
+    "donor_age_group",
+    "gender_match",
+    "ABO_match",
+    "expected_survival_time"
 ]
