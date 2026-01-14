@@ -24,7 +24,7 @@ def call_prepare_data_for_topsis(stem_cell_source):
             print("\nVocê digitou:", recipient_id, "Name:", df_recipients.loc[df_recipients['recipient_ID'] == recipient_id, 'recipient_name'].values[0])
             aggregated_data = aggregate_data(recipient_id, donors_CSV_PATH, recipient_CSV_PATH, stem_cell_source)
             break
-                
+
         else:
             print("\nVocê digitou:", recipient_id)
             print("ID de receptor inválido. Certifique-se de que o ID existe na lista de receptores.")
