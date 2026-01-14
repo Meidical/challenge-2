@@ -27,8 +27,8 @@ class BoneMarrowClassificationInput(BaseModel):
     CMV_status: float
     HLA_match: str
     HLA_mismatch: str
-    antigen: int
-    allel: int
+    antigen: float #estava int e dava erro
+    allel: float #estava int e dava erro
     HLA_group_1: str
     risk_group: str
     stem_cell_source: str
@@ -55,8 +55,8 @@ class BoneMarrowRegressionInput(BaseModel):
     CMV_status: float
     HLA_match: str
     HLA_mismatch: str
-    antigen: int
-    allel: int
+    antigen: float #estava int e dava erro
+    allel: float #estava int e dava erro
     HLA_group_1: str
     risk_group: str
     stem_cell_source: str
@@ -139,9 +139,9 @@ class BoneMarrowClassificationService:
             print(f"Warning: Could not retrieve best model for {task}: {e}")
             # Return default tags
             if task == "classification":
-                return "rf_gan_classification:latest"
+                return "rf_tuned_optuna_classification:latest"
             else:
-                return "lgbm_tuned_wclf_proba_regression:latest"
+                return "rf_tuned_optuna_regression:latest"
 
     @bentoml.api
     def predict_classification(self, data: BoneMarrowClassificationInput) -> dict:
@@ -252,7 +252,8 @@ class BoneMarrowClassificationService:
         # Use predicted survival status for regression
         regression_input = BoneMarrowRegressionInput(
             **data.model_dump(),
-            survival_status=classification_result["survival_status"]
+            #survival_status=classification_result["survival_status"]
+            is_dead=classification_result["survival_status"]
         )
         regression_result = self.predict_regression(regression_input)
 

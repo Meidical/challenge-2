@@ -16,6 +16,15 @@ import optuna
 import numpy as np
 import pandas as pd
 
+# Third-party imports - Preprocessing
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import FunctionTransformer, Pipeline
+from sklearn.preprocessing import (
+    MinMaxScaler,
+    OneHotEncoder
+)
+
 # Third-party imports - Machine Learning
 from sklearn.calibration import cross_val_predict
 from sklearn.metrics import (
@@ -51,11 +60,16 @@ from mlflow.models import infer_signature
 # Third-party imports - BentoML
 import bentoml
 
+# Third-party imports - Explainability
+import shap
+import matplotlib.pyplot as plt
+
 # Local imports
 from mlflow_experiments import (
     MODEL_REGISTRY_CLASSIFICATION,
     MODEL_REGISTRY_REGRESSION,
-    PARAM_GRIDS
+    PARAM_GRIDS,
+    MODEL_FAMILIES
 )
 from pre_processor import PreProcessor
 
@@ -67,6 +81,29 @@ def check_mlflow_server(host="127.0.0.1", port=5000, timeout=2):
         urllib.request.urlopen(url, timeout=timeout)
         return True
     except (urllib.error.URLError, urllib.error.HTTPError):
+        return False
+
+
+def kill_mlflow_server(port=5000):
+    """Kill any process running on the specified port"""
+    try:
+        # Find process using the port
+        result = subprocess.run(
+            ["lsof", "-ti", f":{port}"],
+            capture_output=True,
+            text=True
+        )
+
+        if result.stdout.strip():
+            pids = result.stdout.strip().split('\n')
+            for pid in pids:
+                print(f"Killing process {pid} on port {port}...")
+                subprocess.run(["kill", "-9", pid])
+            time.sleep(1)  # Wait for process to die
+            return True
+        return False
+    except Exception as e:
+        print(f"Error killing process on port {port}: {e}")
         return False
 
 
@@ -104,11 +141,8 @@ def start_mlflow_server(host="127.0.0.1", port=5000):
 
 def ensure_mlflow_running(host="127.0.0.1", port=5000):
     """Ensure MLflow server is running, start it if not"""
-    if check_mlflow_server(host, port):
-        print(f"MLflow server is already running at http://{host}:{port}")
-        return None
-    else:
-        return start_mlflow_server(host, port)
+    kill_mlflow_server()
+    return start_mlflow_server(host, port)
 
 
 def load_dataset(file_path: str):
@@ -204,6 +238,141 @@ def generate_gan(
 
     else:
         return X_train, y_train
+
+
+def feature_engineering(X, cfg):
+    X = X.copy()
+    features = []
+
+    if cfg.fe.age_gap:
+        X["age_gap"] = (X["donor_age"] - X["recipient_age"]).abs()
+        features.append("age_gap")
+
+    if cfg.fe.age_bin:
+        X["donor_age_bin"] = pd.cut(
+            X["donor_age"],
+            bins=[0, 18, 40, 60, 100],
+            labels=False
+        )
+        features.append("donor_age_bin")
+
+        X["recipient_age_bin"] = pd.cut(
+            X["recipient_age"],
+            bins=[0, 2, 5, 7, 10, 18, 22],
+            labels=False
+        )
+        features.append("recipient_age_bin")
+
+    if not features:
+        X["_dummy"] = 0
+        features.append("_dummy")
+
+    return X[features]
+
+
+def make_feature_names_out(cfg):
+    def _feature_names_out(*args, **kwargs):
+        names = []
+
+        if cfg.fe.age_gap:
+            names.append("age_gap")
+
+        if cfg.fe.age_bin:
+            names.extend(["donor_age_bin", "recipient_age_bin"])
+
+        if not names:
+            names.extend(["_dummy"])
+
+        return np.array(names, dtype=object)
+
+    return _feature_names_out
+
+
+def parse_hla_match(X):
+    s = X.iloc[:, 0]
+    return (
+        s
+        .astype(str)
+        .str.split("/", expand=True)[0]
+        .astype(float)
+        .to_frame()
+    )
+
+
+def build_preprocessor(cfg):
+    bool_cols = [
+        "donor_age_below_35",
+        "donor_CMV",
+        "recipient_age_below_10",
+        "recipient_gender",
+        "recipient_CMV",
+        "disease_group",
+        "gender_match",
+        "ABO_match",
+        "HLA_mismatch",
+        "risk_group",
+        "stem_cell_source"
+    ]
+
+    cat_cols = [
+        "CMV_status",
+        "disease",
+        "HLA_group_1",
+        "recipient_age_int",
+    ]
+
+    extra_cols = Pipeline([
+        (
+            "feature_engineering",
+            FunctionTransformer(
+                lambda X: feature_engineering(X, cfg),
+                feature_names_out=make_feature_names_out(cfg)
+            )
+        ),
+
+        ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
+        ("scaler", MinMaxScaler())
+    ])
+
+    hla_pipeline = Pipeline([
+        ("parser", FunctionTransformer(
+            parse_hla_match, feature_names_out="one-to-one")),
+        ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
+        ("scaler", MinMaxScaler())
+    ])
+
+    bool_pipeline = Pipeline([
+        ("imputer", SimpleImputer(strategy="most_frequent", add_indicator=True)),
+        ("encoder", OneHotEncoder(drop="if_binary"))
+    ])
+
+    cat_pipeline = Pipeline([
+        ("imputer", SimpleImputer(strategy="most_frequent", add_indicator=True)),
+        ("one_hot", OneHotEncoder())
+    ])
+
+    columns_to_drop = [
+        col for col, drop in cfg.fe.drop_columns.items()
+        if drop
+    ]
+
+    remainder_pipeline = Pipeline([
+        ("inputer", SimpleImputer(strategy="median", add_indicator=True)),
+        ("scaler", MinMaxScaler())
+    ])
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ("extra_cols", extra_cols, ["donor_age", "recipient_age"]),
+            ("column_dropper", "drop", columns_to_drop),
+            ("hla", hla_pipeline, ["HLA_match"]),
+            ("bool", bool_pipeline, bool_cols),
+            ("one_hot", cat_pipeline, cat_cols)
+        ],
+        remainder=remainder_pipeline
+    )
+
+    return preprocessor
 
 
 def build_pipeline(model, preprocessor, use_smote=False):
@@ -332,13 +501,110 @@ def predict(bento_model, testdata):
     return prediction
 
 
+def get_model_family(model_name: str):
+    for family, models in MODEL_FAMILIES.items():
+        if model_name in models:
+            return family
+    return "unsupported"
+
+
+def log_shap_explanations(
+    pipeline,
+    X_train,
+    task,
+    model_name,
+    max_samples=1000
+):
+    preprocessor = pipeline.named_steps["preprocessor"]
+    model = pipeline.named_steps["classifier"]
+
+    model_family = get_model_family(model_name)
+    if model_family == "unsupported":
+        print("Unsupported model")
+        return
+
+    X_transformed = preprocessor.transform(X_train)
+
+    if hasattr(X_transformed, "toarray"):
+        X_transformed = X_transformed.toarray()
+
+    feature_names = preprocessor.get_feature_names_out()
+
+    # --- Subsample for speed ---
+    if X_transformed.shape[0] > max_samples:
+        idx = np.random.choice(
+            X_transformed.shape[0], max_samples, replace=False)
+        X_transformed = X_transformed[idx]
+
+    # --- Create explainer + SHAP values ---
+    if model_family == "tree":
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X_transformed)
+
+        if task == "classification":
+            # Binary classification handling
+            if isinstance(shap_values, list):
+                shap_to_plot = shap_values[1]
+            else:
+                # shape = (n_samples, n_features, n_classes)
+                shap_to_plot = shap_values[:, :, 1]
+        else:
+            # Regression → single output
+            shap_to_plot = shap_values
+
+    else:  # linear models
+        background = shap.sample(
+            X_transformed, min(100, X_transformed.shape[0]))
+
+        explainer = shap.LinearExplainer(
+            model,
+            background,
+            feature_perturbation="interventional"
+        )
+
+        shap_to_plot = explainer.shap_values(X_transformed)
+
+    # --- Plot + log ---
+    with tempfile.TemporaryDirectory() as tmpdir:
+        bar_path = os.path.join(tmpdir, f"shap_{task}_bar.png")
+        beeswarm_path = os.path.join(tmpdir, f"shap_{task}_beeswarm.png")
+
+        # Bar plot (global importance)
+        shap.summary_plot(
+            shap_to_plot,
+            X_transformed,
+            feature_names=feature_names,
+            plot_type="bar",
+            max_display=30,
+            show=False
+        )
+        plt.savefig(bar_path, bbox_inches="tight")
+        plt.close()
+
+        # Beeswarm (distribution + direction)
+        shap.summary_plot(
+            shap_to_plot,
+            X_transformed,
+            feature_names=feature_names,
+            plot_type="dot",
+            max_display=30,
+            show=False
+        )
+        plt.savefig(beeswarm_path, bbox_inches="tight")
+        plt.close()
+
+        mlflow.log_artifact(bar_path, artifact_path="shap")
+        mlflow.log_artifact(beeswarm_path, artifact_path="shap")
+
+
 def run_experiment(
     experiment,
     X_train,
     y_train,
     X_test,
     y_test,
-    task
+    task,
+    cfg
 ):
     n_splits = 5
 
@@ -365,8 +631,7 @@ def run_experiment(
         })
 
     # Create preprocessor instance
-    preprocessor_instance = PreProcessor()
-    preprocessor = preprocessor_instance.preprocessor
+    preprocessor = build_preprocessor(cfg)
 
     pipeline = build_pipeline(
         model=model,
@@ -421,10 +686,19 @@ def run_experiment(
             k: v for k, v in best_model.get_params().items()
             if isinstance(v, (str, int, float, bool))
         })
+
         mlflow.log_metric("best_cv_score", score)
 
     else:
         best_model = pipeline.fit(X_tr, y_tr)
+
+    if experiment["explain"]:
+        log_shap_explanations(
+            pipeline=best_model,
+            X_train=X_tr,
+            task=task,
+            model_name=experiment["model"]
+        )
 
     y_pred_train = best_model.predict(X_tr)
     y_pred_cv = cross_val_predict(
@@ -502,6 +776,12 @@ def build_run_name(exp, task):
         if exp.get("predict_proba"):
             parts.append("proba")
 
+    if not exp["age_gap"]:
+        parts.append("noagegap")
+
+    if not exp["age_bin"]:
+        parts.append("noagebin")
+
     return "_".join(parts)
 
 
@@ -521,7 +801,10 @@ def run_mlflow(df, cfg):
         "gan_1": cfg.gan_params.gan_1,
         "use_clf": cfg.regression.use_clf,
         "predict_proba": cfg.regression.predict_proba,
-        "tuning_method": cfg.tuning.method
+        "tuning_method": cfg.tuning.method,
+        "explain": cfg.shap,
+        "age_bin": cfg.fe.age_gap,
+        "age_gap": cfg.fe.age_bin
     }
 
     run_name = build_run_name(exp, cfg.task)
@@ -540,7 +823,6 @@ def run_mlflow(df, cfg):
         })
 
         if cfg.task == "regression" and cfg.regression.use_clf:
-
             experiment = mlflow.get_experiment_by_name(
                 "bone-marrow-classification")
 
@@ -590,6 +872,7 @@ def run_mlflow(df, cfg):
             X_test=X_test,
             y_test=y_test,
             task=cfg.task,
+            cfg=cfg
         )
 
         import_model(run_name, cfg.task, experiment_model.model_uri)
@@ -603,9 +886,6 @@ def main(cfg: DictConfig):
         "host": "127.0.0.1",
         "port": 5000
     }
-
-    # Ensure MLflow server is running
-    ensure_mlflow_running(host=mlflow_run["host"], port=mlflow_run["port"])
 
     # Set MLflow tracking URI
     mlflow.set_tracking_uri(
@@ -621,4 +901,5 @@ def main(cfg: DictConfig):
 
 
 if __name__ == "__main__":
+    bootstrap_mlflow = ensure_mlflow_running()
     main()

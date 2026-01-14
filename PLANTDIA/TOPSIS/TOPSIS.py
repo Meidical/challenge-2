@@ -139,17 +139,11 @@ def similarities_to_PIS(positive_separation, negative_separation, verbose=False)
 
 
 # Função principal
-
-#def calculate_topsis(mydata, verbose=False):
-
 def calculate_topsis(dataframe, stem_cell_source, verbose=False):
 
     # Normalize column names so we can accept both spaced and underscored IDs
-    column_aliases = {
-        'Recipient ID': 'recipient_ID',
-        'Donor ID': 'donor_ID',
-    }
-    normalized_df = dataframe.rename(columns=column_aliases)
+
+    df_copy = dataframe.copy()
 
     required_columns = [
         'recipient_ID',
@@ -164,12 +158,12 @@ def calculate_topsis(dataframe, stem_cell_source, verbose=False):
         'Recipient Name',
     ]
 
-    missing = [col for col in required_columns if col not in normalized_df.columns]
+    missing = [col for col in required_columns if col not in df_copy.columns]
     if missing:
-        raise KeyError(f"Missing required columns for TOPSIS: {missing}. Present columns: {list(normalized_df.columns)}")
+        raise KeyError(f"Missing required columns for TOPSIS: {missing}. Present columns: {list(df_copy.columns)}")
 
     # Vou ordenar o dataframe pela ordem conveniente
-    mydata = normalized_df.loc[:, required_columns].copy()
+    mydata = df_copy.loc[:, required_columns].copy()
 
     # Estrutura do DataFrame necessária para o funcionamento do TOPSIS:
     # |─────────────|───────────|───────────|─────────────────|───────────────────|───────────────|────────────|──────────────────────────|-----------|--------------|
@@ -209,7 +203,7 @@ def calculate_topsis(dataframe, stem_cell_source, verbose=False):
     w_matrix = weighted_matrix(criteria_weight, norm_matrix, verbose=verbose)
     pos_ideal, neg_ideal = ideal_best_worst(w_matrix, criteria_preferences, verbose=verbose)
     pos_sep, neg_sep = separation_from_ideal_point(w_matrix, pos_ideal, neg_ideal, verbose=verbose)
-    scores = similarities_to_PIS(pos_sep, neg_sep, verbose=verbose)
+    TOPSIS_scores = similarities_to_PIS(pos_sep, neg_sep, verbose=verbose) #<-- Resultado final
     
     # Cria resultado final
     recipient_id_column = mydata["recipient_ID"]
@@ -217,14 +211,8 @@ def calculate_topsis(dataframe, stem_cell_source, verbose=False):
     donor_name_column = mydata["Donor Name"]
     recipient_name_column = mydata["Recipient Name"]
 
-    results_series = pd.Series(scores, name='TOPSIS Score')
-    df_TOPSIS = pd.concat([recipient_id_column, donor_id_column, results_series, donor_name_column, recipient_name_column], axis=1)
-    data=normalized_df.copy().drop(columns=['recipient_ID', 'donor_ID', 'Donor Name', 'Recipient Name'])
-    print("aqui", data.columns)
-    df_TOPSIS = pd.concat([df_TOPSIS, data], axis=1)
-    df_TOPSIS = df_TOPSIS.sort_values(by='TOPSIS Score', ascending=False)
-    df_TOPSIS.rename(columns={'TOPSIS Score': 'TOPSIS Rank'}, inplace=True)
-    print("\n=== TOPSIS Results ===")
+    results_series = pd.Series(TOPSIS_scores, name='TOPSIS Score')
+    df_TOPSIS = pd.concat([recipient_id_column, donor_id_column, results_series, recipient_name_column, donor_name_column], axis=1)   
     return df_TOPSIS
 
 
