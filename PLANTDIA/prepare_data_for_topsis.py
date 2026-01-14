@@ -185,6 +185,17 @@ def aggregate_data(id, donor_list_path, recipient_list_path, stem_cell_source):
             predicted_survival_time = None
         
         print(response)
+
+        expected_survival_1st_year = 1 if predicted_survival_time > 365 else 0
+        expected_survival_2nd_year = 1 if predicted_survival_time > 730 else 0
+        expected_survival_3rd_year = 1 if predicted_survival_time > 1095 else 0
+        expected_survival_4th_year = 1 if predicted_survival_time > 1460 else 0
+        expected_survival_5th_year = 1 if predicted_survival_time > 1825 else 0
+        print(f"Predicted Survival 1st year for donor {donor_name}: {expected_survival_1st_year}")  
+        print(f"Predicted Survival 2nd year for donor {donor_name}: {expected_survival_2nd_year}")  
+        print(f"Predicted Survival 3rd year for donor {donor_name}: {expected_survival_3rd_year}")
+        print(f"Predicted Survival 4th year for donor {donor_name}: {expected_survival_4th_year}")
+        print(f"Predicted Survival 5th year for donor {donor_name}: {expected_survival_5th_year}")
       
       # Armazena os dados agregados      
         aggregated_data["Donors"].append({
@@ -197,8 +208,13 @@ def aggregate_data(id, donor_list_path, recipient_list_path, stem_cell_source):
             "Donor Age Group": donor_age_group,
             "Gender Match": gender_match,
             "ABO Match": ABO_match,
-            "Expected Survaival Status": "not_survived" if is_dead == 1 else "survived",
-            "Expected Survival Time": predicted_survival_time
+            "Expected Survival Status": "not_survived" if is_dead == 1 else "survived",
+            "Expected Survival Time": predicted_survival_time,
+            "Expected Survival Time 1st Year": "yes" if expected_survival_1st_year else "no",
+            "Expected Survival Time 2nd Year": "yes" if expected_survival_2nd_year else "no",
+            "Expected Survival Time 3rd Year": "yes" if expected_survival_3rd_year else "no",
+            "Expected Survival Time 4th Year": "yes" if expected_survival_4th_year else "no",
+            "Expected Survival Time 5th Year": "yes" if expected_survival_5th_year else "no"
         })
 
     aggregated_data = pd.DataFrame(aggregated_data["Donors"]) if aggregated_data["Donors"] else pd.DataFrame()
@@ -213,14 +229,30 @@ def aggregate_data(id, donor_list_path, recipient_list_path, stem_cell_source):
             "Donor Age Group",
             "Gender Match",
             "ABO Match",
-            "Expected Survaival Status",
-            "Expected Survival Time"
+            "Expected Survival Status",
+            "Expected Survival Time",
+            "Expected Survival Time 1st Year",  
+            "Expected Survival Time 2nd Year",
+            "Expected Survival Time 3rd Year",
+            "Expected Survival Time 4th Year",
+            "Expected Survival Time 5th Year"
         ]]
+
     print("\n### Aggregated Data ###")
     pd.set_option('display.max_columns', None)
     pd.set_option('display.width', None)
     pd.set_option('display.max_colwidth', None)
-    print(aggregated_data)
+    
+    # Exibir dados de forma vertical para facilitar visualização no terminal
+    for idx, row in aggregated_data.iterrows():
+        print(f"\n{'='*60}")
+        print(f"DONOR {idx + 1}: {row['Donor Name']} (ID: {row['donor_ID']})")
+        print(f"{'='*60}")
+        for col in aggregated_data.columns:
+            if col not in ['donor_ID', 'Donor Name']:
+                print(f"  {col:40} : {row[col]}")
+    
+    print(f"\n{'='*60}\n")
     return aggregated_data
 
 
