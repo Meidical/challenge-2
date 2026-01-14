@@ -1,74 +1,47 @@
 import logging
 from typing import Any, Dict
 
-import bentoml
-from boneNarrowClassification import BoneMarrowClassificationInput, BoneMarrowRegressionInput
+import requests
 
 logger = logging.getLogger(__name__)
 
-ENDPOINT = "127.0.0.1:3000"
+ENDPOINT = "http://127.0.0.1:3000"
 
 
 class BentoMLClient:
     def __init__(self, endpoint: str = ENDPOINT):
         if not endpoint:
             raise ValueError("Endpoint cannot be empty")
-        self.endpoint = endpoint
-        try:
-            self.client = bentoml.Client(endpoint)
-            logger.info(
-                f"BentoML client initialized with endpoint: {endpoint}")
-        except Exception as e:
-            logger.error(f"Failed to initialize BentoML client: {e}")
-            raise
+        self.endpoint = endpoint.rstrip('/')
+        logger.info(f"BentoML client initialized with endpoint: {endpoint}")
 
-    def predict_classification(self, input_data: BoneMarrowClassificationInput) -> Dict[str, Any]:
-        if not isinstance(input_data, BoneMarrowClassificationInput):
-            raise TypeError(
-                "input_data must be of type BoneMarrowClassificationInput")
-
+    def _post(self, path: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """Make a POST request to the BentoML service."""
+        url = f"{self.endpoint}/{path}"
         try:
-            logger.debug(f"Sending classification prediction request")
-            response = self.client.post(
-                "/predict_classification",
-                json=input_data.model_dump()
-            )
-            logger.info("Classification prediction successful")
+            response = requests.post(url, json=payload)
+            response.raise_for_status()
             return response.json()
-        except Exception as e:
-            logger.error(f"Classification prediction failed: {e}")
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request to {url} failed: {e}")
             raise
 
-    def predict_regression(self, input_data: BoneMarrowRegressionInput) -> Dict[str, Any]:
-        if not isinstance(input_data, BoneMarrowRegressionInput):
-            raise TypeError(
-                "input_data must be of type BoneMarrowRegressionInput")
+    def predict_classification(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        logger.debug("Sending classification prediction request")
+        return self._post("predict_classification", {"data": input_data})
 
-        try:
-            logger.debug(f"Sending regression prediction request")
-            response = self.client.post(
-                "/predict_regression",
-                json=input_data.model_dump()
-            )
-            logger.info("Regression prediction successful")
-            return response.json()
-        except Exception as e:
-            logger.error(f"Regression prediction failed: {e}")
-            raise
+    def predict_regression(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        logger.debug("Sending regression prediction request")
+        return self._post("predict_regression", {"data": input_data})
 
-    def predict_full(self, input_data: BoneMarrowClassificationInput) -> Dict[str, Any]:
-        if not isinstance(input_data, BoneMarrowClassificationInput):
-            raise TypeError(
-                "input_data must be of type BoneMarrowClassificationInput")
+    def predict_full(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        logger.debug("Sending full prediction request")
+        return self._post("predict_full", {"data": input_data})
 
-        try:
-            logger.debug(f"Sending full prediction request")
-            response = self.client.post(
-                "/predict_full",
-                json=input_data.model_dump()
-            )
-            logger.info("Full prediction successful")
-            return response.json()
-        except Exception as e:
-            logger.error(f"Full prediction failed: {e}")
-            raise
+    def predict_full_dataframe_classification(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        logger.debug("Sending classification dataset prediction request")
+        return self._post("predict_full_dataframe_classification", payload)
+
+    def predict_full_dataframe_regression(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        logger.debug("Sending regression dataset prediction request")
+        return self._post("predict_full_dataframe_regression", payload)

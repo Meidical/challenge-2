@@ -33,6 +33,40 @@ class DataUtils:
 
         return data_aggregated
 
+    @staticmethod
+    def validate_value(value, default=None, expected_type=None):
+        """Validate a value, returning default if NaN, None, or empty string for numeric types."""
+        # Handle None
+        if value is None:
+            return default
+
+        # Handle NaN for float values
+        try:
+            if np.isnan(value):
+                return default
+        except (TypeError, ValueError):
+            pass  # Not a numeric type, continue
+
+        # Handle empty string for numeric types
+        if expected_type in (float, int) and value == '':
+            return default
+
+        # Convert to expected type if specified
+        if expected_type == str:
+            return str(value)
+        elif expected_type == float:
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return default
+        elif expected_type == int:
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return default
+
+        return value
+
 
 def join_row_to_data(row: DataFrame, data: DataFrame):
     data_joined = data.copy()

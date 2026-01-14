@@ -294,10 +294,26 @@ class BoneMarrowClassificationService:
         rows = [item.model_dump() for item in dataset]
         input_df = pd.DataFrame(rows)
 
-        # Predict survival time
+        # Predict survival status
         result = self.classification_model_impl.predict(input_df)
 
-        # return a dict with the predicted survival time
-        return {
-            "predictions": result.tolist()
-        }
+        # Get probabilities if available
+        try:
+            if hasattr(self.classification_model_impl, 'predict_proba'):
+                proba = self.classification_model_impl.predict_proba(input_df)
+            elif hasattr(self.classification_model_impl, '_model_impl'):
+                proba = self.classification_model_impl._model_impl.predict_proba(
+                    input_df)
+            else:
+                raise AttributeError("predict_proba not available")
+
+            return {
+                "predictions": result.tolist(),
+                "probabilities_alive": proba[:, 0].tolist(),
+                "probabilities_dead": proba[:, 1].tolist()
+            }
+        except Exception as e:
+            return {
+                "predictions": result.tolist(),
+                "error": f"Could not retrieve probabilities: {str(e)}"
+            }
