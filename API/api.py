@@ -1,9 +1,10 @@
 from flask import Flask, request, jsonify
+from boneNarrowClassification import BoneMarrowClassificationInput, BoneMarrowRegressionInput
 
 
 # import logic module
 from data_utils import DataUtils
-
+from topsis import Topsis
 
 RECIPIENT_CSV_PATH = "../datasets/raw/recipient_waiting_list_raw.csv"
 DONOR_CSV_PATH = "../datasets/raw/donor_list_raw.csv"
@@ -50,7 +51,11 @@ def aggregate_endpoint(recipient_id: str):
         DataUtils.read_df(DONOR_CSV_PATH)
     )
 
-    return jsonify(data_aggregated.to_dict(orient='records'))
+    deviation_from_ideal_col = Topsis.get_deviation_from_ideal_col_TOPSIS(
+        data_aggregated,
+        stem_cell_source
+    )
+    return jsonify(deviation_from_ideal_col.to_dict())
 
 
 if __name__ == '__main__':
