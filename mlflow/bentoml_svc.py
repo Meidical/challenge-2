@@ -1,4 +1,5 @@
 import bentoml
+from bentoml.io import JSON
 import mlflow
 import numpy as np
 import pandas as pd
@@ -27,8 +28,8 @@ class BoneMarrowClassificationInput(BaseModel):
     CMV_status: float
     HLA_match: str
     HLA_mismatch: str
-    antigen: float #estava int e dava erro
-    allel: float #estava int e dava erro
+    antigen: float
+    allel: float
     HLA_group_1: str
     risk_group: str
     stem_cell_source: str
@@ -55,15 +56,22 @@ class BoneMarrowRegressionInput(BaseModel):
     CMV_status: float
     HLA_match: str
     HLA_mismatch: str
-    antigen: float #estava int e dava erro
-    allel: float #estava int e dava erro
+    antigen: float
+    allel: float
     HLA_group_1: str
     risk_group: str
     stem_cell_source: str
     is_dead: float
 
 
-# Define the BentoML Service
+class BoneMarrowClassificationDataset(BaseModel):
+    dataset: list[BoneMarrowClassificationInput]
+
+
+class BoneMarrowRegressionDataset(BaseModel):
+    dataset: list[BoneMarrowRegressionInput]
+
+
 @bentoml.service(
     resources={"cpu": "2", "memory": "500MiB"},
     workers=1,
@@ -231,8 +239,6 @@ class BoneMarrowClassificationService:
             'HLA_group_1': data.HLA_group_1,
             'risk_group': data.risk_group,
             'stem_cell_source': data.stem_cell_source,
-            # Convert float to int
-            # 'survival_status': int(data.survival_status),
             'is_dead': data.is_dead
         }])
 
@@ -252,7 +258,7 @@ class BoneMarrowClassificationService:
         # Use predicted survival status for regression
         regression_input = BoneMarrowRegressionInput(
             **data.model_dump(),
-            #survival_status=classification_result["survival_status"]
+            # survival_status=classification_result["survival_status"]
             is_dead=classification_result["survival_status"]
         )
         regression_result = self.predict_regression(regression_input)
@@ -266,4 +272,32 @@ class BoneMarrowClassificationService:
             "regression": {
                 "predicted_survival_time_days": regression_result["predicted_survival_time_days"]
             }
+        }
+
+    @bentoml.api
+    def predict_full_dataframe_regression(self, dataset: list[BoneMarrowRegressionInput]) -> dict:
+        # receive a dataframe with multiple rows
+        rows = [item.model_dump() for item in dataset]
+        input_df = pd.DataFrame(rows)
+
+        # Predict survival time
+        result = self.regression_model_impl.predict(input_df)
+
+        # return a dict with the predicted survival time
+        return {
+            "predictions": result.tolist()
+        }
+
+    @bentoml.api
+    def predict_full_dataframe_classification(self, dataset: list[BoneMarrowClassificationInput]) -> dict:
+        # receive a dataframe with multiple rows
+        rows = [item.model_dump() for item in dataset]
+        input_df = pd.DataFrame(rows)
+
+        # Predict survival time
+        result = self.classification_model_impl.predict(input_df)
+
+        # return a dict with the predicted survival time
+        return {
+            "predictions": result.tolist()
         }
