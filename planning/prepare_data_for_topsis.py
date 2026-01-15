@@ -29,7 +29,7 @@ def load_dataset(list_path):
     return df
 
 # Importa a classe responsável por calcular os matches
-from notebooks.dev.match_calc import *
+from PLANTDIA.match_calc import *
 
 
 # Função Principal

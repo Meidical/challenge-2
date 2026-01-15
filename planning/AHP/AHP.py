@@ -226,7 +226,3 @@ if __name__ == "__main__":
             print('The model is consistent')
         else:
             print('The model is not consistent')
-
-
-
-
