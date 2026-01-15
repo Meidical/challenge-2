@@ -76,6 +76,11 @@ def list_donor_matches(recipient_id: str):
     )
     return jsonify(deviation_from_ideal_col.to_dict())'''
 
+@app.route("/transplant-pairs", methods=['GET'])
+def get_pairs():
+    df_pairs = DataUtils.read_df(PAIR_CSV_PATH)
+    return df_pairs.to_json(orient='records')
+
 @app.route("/transplant-pairs", methods=['POST'])
 def create_transplant_pair():
     data = request.get_json()
