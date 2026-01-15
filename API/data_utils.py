@@ -6,6 +6,7 @@ from pandas import DataFrame, Series
 
 from match_utils import MatchUtils
 
+
 class DataUtils:
     @staticmethod
     def read_df(df_path):
@@ -86,6 +87,41 @@ class DataUtils:
 
         return data_aggregated
 
+    @staticmethod
+    def validate_value(value, default=None, expected_type=None):
+        """Validate a value, returning default if NaN, None, or empty string for numeric types."""
+        # Handle None
+        if value is None:
+            return default
+
+        # Handle NaN for float values
+        try:
+            if np.isnan(value):
+                return default
+        except (TypeError, ValueError):
+            pass  # Not a numeric type, continue
+
+        # Handle empty string for numeric types
+        if expected_type in (float, int) and value == '':
+            return default
+
+        # Convert to expected type if specified
+        if expected_type == str:
+            return str(value)
+        elif expected_type == float:
+            try:
+                return float(value)
+            except (ValueError, TypeError):
+                return default
+        elif expected_type == int:
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                return default
+
+        return value
+
+
 def join_row_to_data(row: DataFrame, data: DataFrame):
     data_joined = data.copy()
 
@@ -107,22 +143,32 @@ def add_match_features(data_encoded: DataFrame):
     data_added = data_added.join(data_added.apply(compute_HLA, axis=1))
 
     data_added["CMV_serostatus"] = data_added.apply(lambda row: MatchUtils.get_CMV_status(row["donor_CMV"], row["recipient_CMV"]), axis=1)
+    data_added["CMV_status"] = data_added.apply(lambda row: MatchUtils.get_CMV_status(
+        row["donor_CMV"], row["recipient_CMV"]), axis=1)
 
-    data_added["gender_match"] = data_added.apply(lambda row: MatchUtils.get_gender_match(row["donor_gender"], row["recipient_gender"]), axis=1)
+    data_added["gender_match"] = data_added.apply(lambda row: MatchUtils.get_gender_match(
+        row["donor_gender"], row["recipient_gender"]), axis=1)
 
-    data_added["ABO_match"] = data_added.apply(lambda row: MatchUtils.get_ABO_match(row["donor_ABO"], row["recipient_ABO"]), axis=1)
-    
+    data_added["ABO_match"] = data_added.apply(lambda row: MatchUtils.get_ABO_match(
+        row["donor_ABO"], row["recipient_ABO"]), axis=1)
+
     return data_added
+
+# Add extra abstracted features
+
 
 def add_abstracted_features(data_encoded: DataFrame):
     data_added = data_encoded.copy()
 
-    data_added["disease_group"] = (data_added["disease"] != "nonmalignant").astype("int")
-    
-    data_added["donor_age_below_35"] = (data_added["donor_age"] < 35).astype("int")
+    data_added["disease_group"] = (
+        data_added["disease"] != "nonmalignant").astype("int")
 
-    data_added["recipient_age_below_10"] = (data_added["recipient_age"] < 10).astype("int")
+    data_added["donor_age_below_35"] = (
+        data_added["donor_age"] < 35).astype("int")
+
+    data_added["recipient_age_below_10"] = (
+        data_added["recipient_age"] < 10).astype("int")
 
     data_added["HLA_mismatch"] = (data_added["HLA_match"] > 8).astype("int")
-    
+
     return data_added

@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from boneNarrowClassification import BoneMarrowClassificationInput, BoneMarrowRegressionInput
-
+from bento_ml_client import BentoMLClient
 
 # import logic module
 from data_utils import DataUtils
@@ -51,11 +51,75 @@ def aggregate_endpoint(recipient_id: str):
         DataUtils.read_df(DONOR_CSV_PATH)
     )
 
-    deviation_from_ideal_col = Topsis.get_deviation_from_ideal_col_TOPSIS(
+    # convet data_aggregated to [BoneMarrowClassificationInput] format
+    BoneMarrowClassificationInput_list = []
+    for _, row in data_aggregated.iterrows():
+        try:
+            input_data = row_to_classification_input(row)
+            BoneMarrowClassificationInput_list.append(input_data.model_dump())
+        except Exception as e:
+            print(f"Error processing row: {e}")
+            continue
+
+    bentoMl = BentoMLClient()
+    is_dead = bentoMl.predict_full_dataframe_classification(
+        {"dataset": BoneMarrowClassificationInput_list})
+
+    return jsonify(is_dead)
+
+    '''deviation_from_ideal_col = Topsis.get_deviation_from_ideal_col_TOPSIS(
         data_aggregated,
         stem_cell_source
     )
-    return jsonify(deviation_from_ideal_col.to_dict())
+    return jsonify(deviation_from_ideal_col.to_dict())'''
+
+
+def row_to_classification_input(row) -> BoneMarrowClassificationInput:
+    """Convert a DataFrame row to BoneMarrowClassificationInput with validation."""
+
+    return BoneMarrowClassificationInput(
+        donor_age=DataUtils.validate_value(row.get('donor_age'), 30.0, float),
+        donor_age_below_35=DataUtils.validate_value(
+            row.get('donor_age_below_35'), 'yes', str),
+        donor_ABO=DataUtils.validate_value(row.get('donor_ABO'), 'A', str),
+        donor_CMV=DataUtils.validate_value(
+            row.get('donor_CMV'), 'present', str),
+        recipient_age=DataUtils.validate_value(
+            row.get('recipient_age'), 10.0, float),
+        recipient_age_below_10=DataUtils.validate_value(
+            row.get('recipient_age_below_10'), 'no', str),
+        recipient_age_int=DataUtils.validate_value(
+            row.get('recipient_age_int'), '10_20', str),
+        recipient_gender=DataUtils.validate_value(
+            row.get('recipient_gender'), 'male', str),
+        recipient_body_mass=DataUtils.validate_value(
+            row.get('recipient_body_mass'), 40.0, float),
+        recipient_ABO=DataUtils.validate_value(
+            row.get('recipient_ABO'), 'A', str),
+        recipient_rh=DataUtils.validate_value(
+            row.get('recipient_rh'), 'plus', str),
+        recipient_CMV=DataUtils.validate_value(
+            row.get('recipient_CMV'), 'present', str),
+        disease=DataUtils.validate_value(row.get('disease'), 'ALL', str),
+        disease_group=DataUtils.validate_value(
+            row.get('disease_group'), 'malignant', str),
+        # gender_match=DataUtils.validate_value(
+        #    row.get('gender_match'), 'other', str),
+        gender_match="other",
+        ABO_match=DataUtils.validate_value(
+            row.get('ABO_match'), 'matched', str),
+        CMV_status=DataUtils.validate_value(row.get('CMV_status'), 3.0, float),
+        HLA_match=DataUtils.validate_value(row.get('HLA_match'), '10/10', str),
+        HLA_mismatch=DataUtils.validate_value(
+            row.get('HLA_mismatch'), 'matched', str),
+        antigen=DataUtils.validate_value(row.get('antigen'), 0.0, float),
+        allel=DataUtils.validate_value(row.get('allel'), 0.0, float),
+        HLA_group_1=DataUtils.validate_value(
+            row.get('HLA_group_1'), 'matched', str),
+        risk_group=DataUtils.validate_value(row.get('risk_group'), 'low', str),
+        stem_cell_source=DataUtils.validate_value(
+            row.get('stem_cell_source'), 'peripheral_blood', str)
+    )
 
 
 if __name__ == '__main__':
