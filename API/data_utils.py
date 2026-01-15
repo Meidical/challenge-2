@@ -1,16 +1,15 @@
 import ast
 from typing import Literal
 
-import numpy as np
 import pandas as pd
-from pandas import DataFrame
+from pandas import DataFrame, Series
 
 from match_utils import MatchUtils
 
 class DataUtils:
     @staticmethod
     def read_df(df_path):
-        df = pd.read_csv(df_path, sep=";", encoding="latin1")
+        df = pd.read_csv(df_path, sep=";", encoding="utf-8")
         return df
 
     @staticmethod
@@ -18,15 +17,17 @@ class DataUtils:
         data_encoded = data.copy()
 
         ATTRIB_GROUPS = {
-        "gender": ["donor_gender", "recipient_gender"],
-        "blood_type": ["donor_ABO", "recipient_ABO"],
-        "presence": ["donor_CMV", "recipient_CMV"],
-        "match": ["ABO_match", "gender_match", "HLA_mismatch"],
-        "donor_age_group": ["donor_age_group"],
-        "yes_no": ["donor_age_below_35", "recipient_age_below_10", "tx_post_relapse"],
-        "disease": ["disease"],
-        "malignant": ["disease_group"],
-        "level": ["risk_group"],
+            "gender": ["donor_gender", "recipient_gender"],
+            "blood_type": ["donor_ABO", "recipient_ABO"],
+            "presence": ["donor_CMV", "recipient_CMV"],
+            "match": ["ABO_match", "HLA_mismatch"],
+            "gender_match": ["gender_match"],
+            "donor_age_group": ["donor_age_group"],
+            "yes_no": ["donor_age_below_35", "recipient_age_below_10", "tx_post_relapse"],
+            "disease": ["disease"],
+            "malignant": ["disease_group"],
+            "level": ["risk_group"],
+            "stem_cell_source": ["stem_cell_source"],
         }
 
         VALUE_MAPPERS = {
@@ -34,11 +35,13 @@ class DataUtils:
             "blood_type": {"O": 0, "A": 1, "B": 2, "AB": 3},
             "presence": {"absent": 0, "present": 1},
             "match": {"mismatched": 0, "matched": 1},
+            "gender_match": {"female_to_male": 0, "other": 1},
             "donor_age_group": {"18-35": 2, "35-50": 1, "50-60": 0},
             "yes_no": {"no": 0, "yes": 1},
             "disease": {"chronic": 1, "AML": 3, "ALL": 4, "nonmalignant": 0, "lymphoma": 2},
             "malignant": {"nonmalignant": 0, "malignant": 1},
             "level": {"low": 1, "high": 1},
+            "stem_cell_source": {"pheripheral blood": 0, "bone marrow": 1},
         }
 
         for mapper_name, attribs in ATTRIB_GROUPS.items():
@@ -56,11 +59,16 @@ class DataUtils:
         return data_encoded
 
     @staticmethod
-    def aggregate_data(recipient_id: str, recipient_waiting_list: DataFrame, donor_list: DataFrame):
+    def aggregate_data(recipient_id: str, recipient_waiting_list: DataFrame, donor_list: DataFrame, donor_id: str = None):
 
-        recipient_row = recipient_row = recipient_waiting_list.loc[recipient_waiting_list["recipient_id"] == recipient_id]
+        recipient_row = recipient_waiting_list.loc[recipient_waiting_list["recipient_id"] == recipient_id]
 
-        data_aggregated = join_row_to_data(recipient_row, donor_list)
+        if donor_id:
+            donor_rows = donor_list.loc[donor_list["donor_id"] == donor_id]
+        else:
+            donor_rows = donor_list
+
+        data_aggregated = join_row_to_data(recipient_row, donor_rows)
 
         data_aggregated["donor_age_group"] = pd.cut(
             data_aggregated["donor_age"],
@@ -77,9 +85,7 @@ class DataUtils:
         data_aggregated = DataUtils.encode_data(data_aggregated, mode="decode")
 
         return data_aggregated
-    
 
-# Append row to another dataset rows
 def join_row_to_data(row: DataFrame, data: DataFrame):
     data_joined = data.copy()
 
@@ -88,19 +94,19 @@ def join_row_to_data(row: DataFrame, data: DataFrame):
 
     return data_joined
 
-# Add match related features
 def add_match_features(data_encoded: DataFrame):
     data_added = data_encoded.copy()
 
     def compute_HLA(row):
         donor = ast.literal_eval(row["donor_tissue_type"])
         recipient = ast.literal_eval(row["recipient_tissue_type"])
-        return MatchUtils.get_HLA_match(donor, recipient)
-    
-    results = data_added.apply(compute_HLA, axis=1)
-    data_added[["HLA_match", "allel", "antigen"]] = DataFrame(results.tolist())
+        HLA_match, allel, antigen = MatchUtils.get_HLA_match(donor, recipient)
 
-    data_added["CMV_status"] = data_added.apply(lambda row: MatchUtils.get_CMV_status(row["donor_CMV"], row["recipient_CMV"]), axis=1)
+        return Series({"HLA_match": HLA_match, "allel": allel, "antigen": antigen})
+    
+    data_added = data_added.join(data_added.apply(compute_HLA, axis=1))
+
+    data_added["CMV_serostatus"] = data_added.apply(lambda row: MatchUtils.get_CMV_status(row["donor_CMV"], row["recipient_CMV"]), axis=1)
 
     data_added["gender_match"] = data_added.apply(lambda row: MatchUtils.get_gender_match(row["donor_gender"], row["recipient_gender"]), axis=1)
 
@@ -108,7 +114,6 @@ def add_match_features(data_encoded: DataFrame):
     
     return data_added
 
-# Add extra abstracted features
 def add_abstracted_features(data_encoded: DataFrame):
     data_added = data_encoded.copy()
 
