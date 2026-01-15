@@ -1,11 +1,11 @@
 import ast
 from typing import Literal
 
+import numpy as np
 import pandas as pd
 from pandas import DataFrame, Series
 
 from match_utils import MatchUtils
-
 
 class DataUtils:
     @staticmethod
@@ -130,6 +130,7 @@ def join_row_to_data(row: DataFrame, data: DataFrame):
 
     return data_joined
 
+
 def add_match_features(data_encoded: DataFrame):
     data_added = data_encoded.copy()
 
@@ -153,8 +154,6 @@ def add_match_features(data_encoded: DataFrame):
         row["donor_ABO"], row["recipient_ABO"]), axis=1)
 
     return data_added
-
-# Add extra abstracted features
 
 
 def add_abstracted_features(data_encoded: DataFrame):
