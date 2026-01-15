@@ -9,9 +9,13 @@ from match_utils import MatchUtils
 
 class DataUtils:
     @staticmethod
-    def read_df(df_path):
+    def read_df(df_path: str):
         df = pd.read_csv(df_path, sep=";", encoding="utf-8")
         return df
+    
+    @staticmethod
+    def write_df(df_path: str, df: DataFrame):
+        df.to_csv(df_path, sep=";", encoding="utf-8", index=False)
 
     @staticmethod
     def encode_data(data: DataFrame, mode: Literal["encode", "decode"] = "encode"):
