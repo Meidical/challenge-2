@@ -483,10 +483,6 @@ def tune_model(
 
 
 def import_model(tag, task, model_uri):
-    print("############ Importing model... ############")
-    print(f"Importing model {tag}_{task} from URI: {model_uri}")
-    bentoml.mlflow.import_model("rf_tuned_optuna_gan_classification", "runs:/1be3f3d146f24d498d18999d8f2dbf46/model",
-                                labels={"run_id": "1be3f3d146f24d498d18999d8f2dbf46"})
     model = bentoml.mlflow.import_model(f'{tag}_{task}', model_uri, labels={
                                         "run_id": mlflow.active_run().info.run_id})
     model_name = ":".join([model.tag.name, model.tag.version])
