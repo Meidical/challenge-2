@@ -264,17 +264,18 @@ One of the first steps in data exploration is to analyze if the target data is b
 This graph shows that a lot of transplants are made with donor-recipient pairs where the donor is between the ages of 25--45 years old and the recipient between 5--15 years old. Another thing to explore could be the correlation between the age gap of the pair. However, analysis suggests that the donor-recipient age gap doesn't have a strong enough correlation with either survival time or survival status of the recipient. Another attribute worth exploring is how blood type compatibility affects survival. Exploratory analysis showed that, while in case there is a blood type match the rate of survival is very close to 50\%, in case of a blood type mismatch the rate of survival drops to close to 40\%, showing a possible small correlation between these attributes. Gender matching can also be an important factor to consider in compatibility; however, analysis shows that gender matching alone isn't sufficient to form a correlation.
 
 \subsection{Feature Engineering}
-Feature Engineering is being performed to better encode significant relationships and reduce ambiguity in the raw data. Testing will be performed with various models in order to understand which changes help the model create better correlations and thus achieve better results. For example, certain features can be derived from existing ones, like the \texttt{age\_gap}, calculated using the absolute difference between the recipient-donor pair. Missing values were handled using imputed data relevant to each feature, and an explicit missingness indicator. Categorical data was encoded using one hot encoding or ordinal encoding when the data was binary. 
-
-All feature engineering steps were integrated into a preprocessing pipeline
+Several features were added, deleted or altered in some way to better help the model predict the target variable. Some of the new engineered features include the addition of the \texttt{age\_gap} feature, which is calculated using the absolute difference between the recipient-donor pair; the binning of the \texttt{donor\_age} and \texttt{recipient\_age} features; and the \texttt{total\_mismatches} feature, which is calculated using the total number of mismatched allels and antigens between donor and recipient.
 
 \subsection{Oversampling}
+\subsubsection{SMOTE}
+Regarding oversampling, two types were tested in this project. One of them is Synthetic Minority Over-sampling TEchnique (SMOTE) \cite{Chawla_2002}. SMOTE is used in unbalanced datasets to create more samples of the minority class using a k-nearest neighbours algorithm. This way, new samples are not equal to existing ones, but slightly different variations of existing minority class samples. In this case, slight variations of SMOTE were used such as SMOTE-NC (for nominal and countinous data) and Adaptive Synthetic Sampling (ADASYN).
+
+\subsubsection{GANs}
+Generative Adversarial Networks (GANs) utilize neural networks to learn and generate synthetic data, which makes them a more robust and powerful alternative to other techniques \cite{gans}.
+
 
 \section{Experiments}
 Approximately 150 experiments with different models and model configurations were made. To facilitate this, MLflow and Hydra were used for tracking and result reproducibility across model configurations.\cite{Zaharia2018MLflow} \cite{Yadan2019Hydra}
-
-\subsection{Feature Engineering}
-Several features were added, deleted or altered in some way to better help the model predict the target variable. Some of the experiments with new features include the addition of the \texttt{age\_gap} feature, which is calculated using the absolute difference between the recipient-donor pair; the binning of the \texttt{donor\_age} and \texttt{recipient\_age} features (tested with different bin ranges); and the \texttt{total\_mismatches} feature, which is calculated using the total number of mismatched allels and antigens between donor and recipient. Furthermore, 
 
 
 \subsection{Survival Classification}

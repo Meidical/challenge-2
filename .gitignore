@@ -9,6 +9,8 @@ mlflow/models/
 mlflow/mlartifacts/
 mlruns/
 mlartifacts/
+challenge2/
+outputs/
 
 *.db
 *.sqlite
