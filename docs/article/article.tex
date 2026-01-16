@@ -114,7 +114,7 @@ The quality of ML models depends intrinsically on data preparation. The literatu
 The transition from classical statistical models to ML requires rigorous validation to avoid overfitting, where the model memorizes training data but fails to generalize \cite{Shouval2014}.
 
 \begin{enumerate}
-    \item \textbf{Predictive algorithms} - recent literature favors algorithms that balance accuracy with clinical interpretability:
+    \item \textbf{Predictive algorithms:} recent literature favors algorithms that balance accuracy with clinical interpretability:
 
           \begin{itemize}
               \item \textbf{Decision trees and ensemble methods:} Shouval et al. \cite{Shouval2015} and Arai et al. \cite{Arai2019} successfully used the ADTree algorithm to predict mortality and GVHD, respectively. ADTree was preferred over Artificial Neural Networks (ANN) or Random Forests because it allows for the visualization of decision rules and interactions (e.g., the impact of disease stage varies by age), whereas ``black box'' models hide this logic.
@@ -122,7 +122,7 @@ The transition from classical statistical models to ML requires rigorous validat
               \item \textbf{Penalized logistic regression:} Tang et al. \cite{Tang2020} used L2 regularization to handle collinearity in longitudinal vital sign data, outperforming baseline models that used only static characteristics.\\
           \end{itemize}
 
-    \item \textbf{Validation methodologies} - robust validation is consistent across high-quality studies:
+    \item \textbf{Validation methodologies:} robust validation is consistent across high-quality studies:
 
           \begin{itemize}
               \item \textbf{Train/test split:} Arai et al.  \cite{Arai2019}. randomly divided a cohort of 26,695 patients into training (70\%) and validation (30\%) sets. The trained model was tested on the validation cohort, demonstrating clear risk stratification (hazard ratio 2.57 for high risk vs. low risk).
@@ -141,7 +141,47 @@ While ML models provide a risk score (prediction), clinical decision-making requ
 The proposed methodology formulates pediatric bone marrow donor–recipient allocation as a multi-criteria decision-making problem. The objective is to generate a ranked list of feasible donor–recipient pairs and provide transparent decision support to the responsible clinician, who retains full responsibility for the final donor selection.
 Alternative ranking is performed using the Technique for Order Preference by Similarity to Ideal Solution (TOPSIS). Criterion weights are obtained using the Analytic Hierarchy Process (AHP), which is applied exclusively to compute the preference vector (weights) of the decision criteria and validated through consistency analysis (consistency ratio). AHP is not applied directly to rank alternatives due to scalability limitations when the number of potential donors is large, which would require a quadratic number of pairwise comparisons.
 The proposed framework explicitly separates criteria weighting (AHP), predictive modeling (machine learning), and final ranking (TOPSIS), thereby supporting transparency, clinical interpretability, and auditability.
-The decision criteria considered in the ranking process are: HLA Match, CMV Serostatus, Donor Age Group, Gender Match, ABO Match, and Expected Survival Time.
+The decision criteria considered in the ranking process are: HLA Match, CMV Serostatus, Donor Age Group, Gender Match, ABO Match, and Expected Survival Time, as shown in Table~\ref{tab:decision_criteria}.
+
+\begin{table*}[htbp]
+\caption{Decision Criteria for Donor--Recipient Matching}
+\label{tab:decision_criteria}
+\centering
+\begin{tabularx}{\textwidth}{c l c X c}
+\hline
+\textbf{Rank} & \textbf{Criterion} & \textbf{Priority} & \textbf{Justification} & \textbf{Sources} \\
+\hline
+1 & HLA Compatibility & Critical & 
+Remains the primary determinant of transplant outcome. High-resolution matching at HLA-A, -B, -C and -DRB1 is the gold standard. Mismatches are consistently associated with reduced survival and increased complications, making HLA assessment the starting point of donor selection, even among alternative donors. &
+\cite{dehn_selection_2019, kollman_effect_2016,jimenez_jimenez_allogeneic_2025} \\
+\hline
+2 & Donor Age & Very High & 
+The most consistently validated non-HLA factor associated with overall survival. Younger donors (18--32 years) are associated with superior outcomes. Each 10-year increase in donor age increases mortality risk by approximately 5.5\%, and donor age should therefore be prioritized over other secondary factors. &
+\cite{kollman_effect_2016,jimenez_jimenez_allogeneic_2025} \\
+\hline
+3 & CMV Serostatus & High & 
+Particularly relevant for CMV-negative recipients, who benefit from CMV-negative donors to reduce non-relapse mortality. However, the overall impact on survival has decreased due to improved antiviral prophylaxis, making this criterion secondary to HLA and donor age. &
+\cite{kollman_effect_2016,jimenez_jimenez_allogeneic_2025, ljungman_guidelines_2019} \\
+\hline
+4 & ABO Compatibility & Moderate & 
+The impact on overall survival is modest or not statistically significant in recent cohorts. Its relevance is mainly operational, reducing hemolysis risk and transfusion requirements. It becomes more important when bone marrow is the graft source, where major ABO mismatches may reduce usable cell yield during processing. &
+\cite{jimenez_jimenez_allogeneic_2025} \\
+\hline
+5 & Donor--Recipient Sex Match & Low & 
+Female-to-male transplants are associated with increased GVHD risk due to anti-HY alloreactivity and delayed neutrophil recovery. Current guidelines consider this a minor criterion, mainly useful for tie-breaking between otherwise equivalent donors. &
+\cite{jimenez_jimenez_allogeneic_2025,gratwohl_gender_2016} \\
+\hline
+6 & Probability of success (Predicted survival time) & Lowest & 
+Sources acknowledge that mortality prediction and performance prognosis
+are tools used and advocated for the optimal selection
+of donors. &
+\cite{ratul_survival_2022, islam_rifat_children_2023} \\
+\hline
+\end{tabularx}
+\end{table*}
+
+
+
 Expected Survival Time (in days) is estimated using a machine learning regression model trained and validated on a publicly available dataset of pediatric unrelated-donor bone marrow transplantations. One of the predictive features used in this regression model is the Expected Survival Status, which represents a binary prediction of post-transplant survival within a follow-up window of three to eight years after transplantation. This survival status is predicted using a separate machine learning classification model.
 At the end of the pipeline, the system outputs an ordered ranking of donor–recipient pairs together with the estimated expected survival time. These results are presented to the clinician as decision support, enabling informed, transparent, and reproducible donor selection.
 
@@ -154,16 +194,16 @@ The used dataset called "Bone Marrow Transplant: children” contained 187 child
 \centering
 \begin{tabularx}{\columnwidth}{l X}
 \hline
-\textbf{Attribute} & \textbf{Description} \\
+\textbf{Attribute} & \textbf{Description} \\\\
 \hline
-
+\\
 \multicolumn{2}{l}{\textbf{Donor-specific attributes}} \\
 donor\_age & Refers to the donor age at donation \\
 donor\_age\_below\_35 & 35 years cutoff age that has significantly lower risk of grade II to IV acute GVHD and lower likelihood of non-relapse mortality with miss-matched recipients \cite{Nagler2024} \\
 donor\_ABO & The blood type of the donor \\
-donor\_CMV & Presence of cytomegalovirus infection. A virus that is harmless and asymptomatic to most people but can be life-threatening for people with compromised immune systems \\
+donor\_CMV & Presence of cytomegalovirus infection. A virus that is harmless and asymptomatic to most people but can be life-threatening for people with compromised immune systems \\\\
 \hline
-
+\\
 \multicolumn{2}{l}{\textbf{Recipient-specific attributes}} \\
 recipient\_age & The donor age at transplant \\
 recipient\_age\_below\_10 & 10 years cutoff \\
@@ -175,9 +215,9 @@ recipient\_rh & The rh of the recipient's blood \\
 recipient\_CMV & Presence of cytomegalovirus infection \\
 disease & Type of disease \\
 disease\_group & Malignant disease or not \\
-risk\_group & The explicit meaning is still to be discovered, but it's assumed to be a value based in disease and disease status to categorize patients into 2 risk groups with significantly different overall survival and progression-free survival on the basis of primarily differences in the relapse risk \cite{Armand2012} \\
+risk\_group & The explicit meaning is still to be discovered, but it's assumed to be a value based in disease and disease status to categorize patients into 2 risk groups with significantly different overall survival and progression-free survival on the basis of primarily differences in the relapse risk \cite{Armand2012} \\\\
 \hline
-
+\\
 \multicolumn{2}{l}{\textbf{Matching-related attributes}} \\
 gender\_match & Checks if female donor to male recipient or any other case \\
 ABO\_match & If blood types are compatible \\
@@ -186,21 +226,21 @@ HLA\_match & Allele level donor-recipient matching \\
 HLA\_mismatch & If HLA match if superior 8 alleles \\
 antigen & Difference of antigens between donor and recipient \\
 allel & Difference of alleles between donor and recipient \\
-HLA\_group\_1 & Description of donor-recipient matching/mismatching \\
+HLA\_group\_1 & Description of donor-recipient matching/mismatching \\\\
 \hline
-
+\\
 \multicolumn{2}{l}{\textbf{Transplantation-related attributes}} \\
 stem\_cell\_source & Where the stem cells were obtained \\
 tx\_post\_relapse & If it is the second transplant done (after relapse) \\
 CD34\_x1e6\_per\_kg & The CD34$^{+}$ cell dose ($10^{6}$) per kg of recipient body weight \\
 CD3\_x1e8\_per\_kg & The CD3$^{+}$ cell dose ($10^{8}$) per kg of recipient body weight \\
-CD3\_to\_CD34\_ratio & The CD3$^{+}$ to CD34$^{+}$ ratio \\
+CD3\_to\_CD34\_ratio & The CD3$^{+}$ to CD34$^{+}$ ratio \\\\
 \hline
-
+\\
 \multicolumn{2}{l}{\textbf{Survivability attributes}} \\
 relapse & If the disease has recurred \\
 survival\_time & Time in days the recipient survived from transplant to death (if dead); time in days the recipient is alive from transplantation to time of data collection (if alive) \\
-survival\_status & If the recipient is dead or alive \\
+survival\_status & If the recipient is dead or alive \\\\
 \hline
 
 \end{tabularx}
