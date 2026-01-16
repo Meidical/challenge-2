@@ -93,7 +93,7 @@ def get_pairs():
 
 
 @app.route("/transplant-pairs", methods=['POST'])
-def create_transplant_pair():
+def create_pair():
     data = request.get_json()
 
     recipient_id = data["recipient_id"]
@@ -124,6 +124,35 @@ def create_transplant_pair():
 
     # return df_pairs.to_json(orient='records')
     return jsonify({"msg": f"Row with id: {pair_id}, successfully added!"})
+
+
+@app.route("/transplant-pairs/<pair_id>", methods=['PATCH'])
+def fill_pair_transplant_info():
+    data = request.get_json()
+
+    stem_cell_source = data["stem_cell_source"]
+    CD34_per_kg = data["CD34_x1e6_per_kg"]
+    CD3_per_kg = data["CD3_x1e8_per_kg"]
+
+    df_pairs = DataUtils.read_df(PAIR_CSV_PATH)
+
+    pair_row = df_pairs.loc[df_pairs["pair_id"] == df_pairs]
+    pair_row["stem_cell_source"] = stem_cell_source
+    pair_row["CD34_x1e6_per_kg"] = CD34_per_kg
+    pair_row["CD3_x1e8_per_kg"] = CD3_per_kg
+    pair_row["CD3_to_CD34_ratio"] = CD3_per_kg / CD34_per_kg
+
+    # call model and feed data.drop("predicted_relapse")
+    # receive relapse value and append to the "predicted_relapse" attrib
+    # update the row in the original dataframe and save in csv
+    # send relapse value
+
+    # df_pairs = pd.concat([df_pairs, pair_row], ignore_index=True)
+    # DataUtils.write_df(PAIR_CSV_PATH, df_pairs)
+
+    relapse = "0"
+    # return df_pairs.to_json(orient='records')
+    return jsonify({"predicted_relapse": relapse})
 
 
 def row_to_classification_input(row) -> BoneMarrowClassificationInput:
