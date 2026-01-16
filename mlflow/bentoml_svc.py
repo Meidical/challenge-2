@@ -89,12 +89,14 @@ class BoneMarrowClassificationService:
 
         # Load classification model
         self.classification_model = bentoml.models.get(
-            classification_tag)
+            "xgb_tuned_optuna_gan_classification:ypzzqcxsmgimgfwq")
+        # classification_tag)
         self.classification_model_impl = self.classification_model.load_model()
 
         # Load regression model
         self.regression_model = bentoml.models.get(
-            regression_tag)
+            "et_tuned_optuna_regression:4med46hsmsd4yfwq")
+        # regression_tag)
         self.regression_model_impl = self.regression_model.load_model()
 
     # Classification endpoint - predicts survival status with probability
@@ -149,7 +151,7 @@ class BoneMarrowClassificationService:
             if task == "classification":
                 return "rf_tuned_optuna_classification:latest"
             else:
-                return "rf_tuned_optuna_regression:latest"
+                return "et_tuned_optuna_regression:latest"
 
     @bentoml.api
     def predict_classification(self, data: BoneMarrowClassificationInput) -> dict:

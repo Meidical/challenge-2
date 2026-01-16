@@ -11,16 +11,21 @@ from data_utils import DataUtils
 from topsis import Topsis
 
 GLOBAL_PATH = os.path.dirname(os.path.abspath(__file__))
-RECIPIENT_CSV_PATH = os.path.join(GLOBAL_PATH, "..", "datasets", "dev", "recipient_waiting_list.csv")
-DONOR_CSV_PATH = os.path.join(GLOBAL_PATH, "..", "datasets", "dev", "donor_list.csv")
-PAIR_CSV_PATH = os.path.join(GLOBAL_PATH, "..", "datasets", "dev", "transplant_pair_list.csv")
+RECIPIENT_CSV_PATH = os.path.join(
+    GLOBAL_PATH, "..", "datasets", "dev", "recipient_waiting_list.csv")
+DONOR_CSV_PATH = os.path.join(
+    GLOBAL_PATH, "..", "datasets", "dev", "donor_list.csv")
+PAIR_CSV_PATH = os.path.join(
+    GLOBAL_PATH, "..", "datasets", "dev", "transplant_pair_list.csv")
 
 app = Flask(__name__)
+
 
 @app.route("/recipients", methods=['GET'])
 def get_recipients():
     df_recipients = DataUtils.read_df(RECIPIENT_CSV_PATH)
     return df_recipients.to_json(orient='records')
+
 
 @app.route("/recipient/<recipient_id>/donor-matches", methods=['POST'])
 def list_donor_matches(recipient_id: str):
@@ -68,18 +73,24 @@ def list_donor_matches(recipient_id: str):
     is_dead = bentoMl.predict_full_dataframe_classification(
         {"dataset": BoneMarrowClassificationInput_list})
 
-    return jsonify(is_dead)
+    for item, is_dead_value in zip(BoneMarrowClassificationInput_list, is_dead.get('probabilities_dead', [])):
+        item['is_dead'] = is_dead_value
 
-    '''deviation_from_ideal_col = Topsis.get_deviation_from_ideal_col_TOPSIS(
+    data_aggregated = bentoMl.predict_full_dataframe_regression(
+        {"dataset": BoneMarrowClassificationInput_list})
+
+    deviation_from_ideal_col = Topsis.get_deviation_from_ideal_col_TOPSIS(
         data_aggregated,
         stem_cell_source
     )
-    return jsonify(deviation_from_ideal_col.to_dict())'''
+    return jsonify(deviation_from_ideal_col.to_dict())
+
 
 @app.route("/transplant-pairs", methods=['GET'])
 def get_pairs():
     df_pairs = DataUtils.read_df(PAIR_CSV_PATH)
     return df_pairs.to_json(orient='records')
+
 
 @app.route("/transplant-pairs", methods=['POST'])
 def create_transplant_pair():
@@ -92,10 +103,11 @@ def create_transplant_pair():
     df_donors = DataUtils.read_df(DONOR_CSV_PATH)
     df_pairs = DataUtils.read_df(PAIR_CSV_PATH)
 
-    pair_row = DataUtils.aggregate_data(recipient_id, df_recipients, df_donors, donor_id)
+    pair_row = DataUtils.aggregate_data(
+        recipient_id, df_recipients, df_donors, donor_id)
 
     prev_id = df_pairs["pair_id"].apply(lambda id: id[2:]).astype(int).max()
-    if(np.isnan(prev_id)):
+    if (np.isnan(prev_id)):
         prev_id = 0
 
     new_id = prev_id + 1
@@ -103,7 +115,8 @@ def create_transplant_pair():
 
     pair_row["pair_id"] = pair_id
 
-    df_recipients = df_recipients[df_recipients["recipient_id"] != recipient_id]
+    df_recipients = df_recipients[df_recipients["recipient_id"]
+                                  != recipient_id]
     DataUtils.write_df(RECIPIENT_CSV_PATH, df_recipients)
 
     df_pairs = pd.concat([df_pairs, pair_row], ignore_index=True)
@@ -111,6 +124,7 @@ def create_transplant_pair():
 
     # return df_pairs.to_json(orient='records')
     return jsonify({"msg": f"Row with id: {pair_id}, successfully added!"})
+
 
 def row_to_classification_input(row) -> BoneMarrowClassificationInput:
     """Convert a DataFrame row to BoneMarrowClassificationInput with validation."""
@@ -158,6 +172,7 @@ def row_to_classification_input(row) -> BoneMarrowClassificationInput:
         stem_cell_source=DataUtils.validate_value(
             row.get('stem_cell_source'), 'peripheral_blood', str)
     )
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
