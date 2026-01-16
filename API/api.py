@@ -97,7 +97,14 @@ def list_donor_matches(recipient_id: str):
 @app.route("/transplant-pairs", methods=['GET'])
 def get_pairs():
     df_pairs = DataUtils.read_df(PAIR_CSV_PATH)
-    return df_pairs.to_json(orient='records')
+
+    df_pairs_with_transplant = df_pairs[df_pairs["predicted_relapse"].notna()].to_json(orient='records')
+    df_pairs_without_transplant = df_pairs[df_pairs["predicted_relapse"].isna()].to_json(orient='records')
+
+    return jsonify({"data": {
+        "with_transplant": df_pairs_with_transplant,
+        "without_transplant": df_pairs_without_transplant,
+    }})
 
 
 @app.route("/transplant-pairs", methods=['POST'])
