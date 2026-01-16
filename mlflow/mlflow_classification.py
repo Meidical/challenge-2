@@ -240,52 +240,28 @@ def generate_gan(
         return X_train, y_train
 
 
-def feature_engineering(X, cfg):
+def feature_engineering(X):
     X = X.copy()
     features = []
 
-    if cfg.fe.age_gap:
-        X["age_gap"] = (X["donor_age"] - X["recipient_age"]).abs()
-        features.append("age_gap")
+    X["age_gap"] = (X["donor_age"] - X["recipient_age"]).abs()
+    features.append("age_gap")
 
-    if cfg.fe.age_bin:
-        X["donor_age_bin"] = pd.cut(
-            X["donor_age"],
-            bins=[0, 18, 40, 60, 100],
-            labels=False
-        )
-        features.append("donor_age_bin")
+    X["donor_age_bin"] = pd.cut(
+        X["donor_age"],
+        bins=[0, 18, 40, 60, 100],
+        labels=False
+    )
+    features.append("donor_age_bin")
 
-        X["recipient_age_bin"] = pd.cut(
-            X["recipient_age"],
-            bins=[0, 2, 5, 7, 10, 18, 22],
-            labels=False
-        )
-        features.append("recipient_age_bin")
-
-    if not features:
-        X["_dummy"] = 0
-        features.append("_dummy")
+    X["recipient_age_bin"] = pd.cut(
+        X["recipient_age"],
+        bins=[0, 2, 5, 7, 10, 18, 22],
+        labels=False
+    )
+    features.append("recipient_age_bin")
 
     return X[features]
-
-
-def make_feature_names_out(cfg):
-    def _feature_names_out(*args, **kwargs):
-        names = []
-
-        if cfg.fe.age_gap:
-            names.append("age_gap")
-
-        if cfg.fe.age_bin:
-            names.extend(["donor_age_bin", "recipient_age_bin"])
-
-        if not names:
-            names.extend(["_dummy"])
-
-        return np.array(names, dtype=object)
-
-    return _feature_names_out
 
 
 def parse_hla_match(X):
@@ -322,13 +298,11 @@ def build_preprocessor(cfg):
     ]
 
     extra_cols = Pipeline([
-        (
-            "feature_engineering",
-            FunctionTransformer(
-                lambda X: feature_engineering(X, cfg),
-                feature_names_out=make_feature_names_out(cfg)
-            )
-        ),
+        ("feature_engineering", FunctionTransformer(
+            feature_engineering,
+            feature_names_out=lambda transformer, input_features: [
+                "age_gap", "donor_age_bin", "recipient_age_bin"]
+        )),
 
         ("imputer", SimpleImputer(strategy="median", add_indicator=True)),
         ("scaler", MinMaxScaler())
@@ -776,12 +750,6 @@ def build_run_name(exp, task):
         if exp.get("predict_proba"):
             parts.append("proba")
 
-    if not exp["age_gap"]:
-        parts.append("noagegap")
-
-    if not exp["age_bin"]:
-        parts.append("noagebin")
-
     return "_".join(parts)
 
 
@@ -803,8 +771,6 @@ def run_mlflow(df, cfg):
         "predict_proba": cfg.regression.predict_proba,
         "tuning_method": cfg.tuning.method,
         "explain": cfg.shap,
-        "age_bin": cfg.fe.age_gap,
-        "age_gap": cfg.fe.age_bin
     }
 
     run_name = build_run_name(exp, cfg.task)
