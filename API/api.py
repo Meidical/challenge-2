@@ -53,13 +53,15 @@ def list_donor_matches(recipient_id: str):
     print(f"Recipient ID: {recipient_id}")
     print(f"Stem cell source: {stem_cell_source}")
 
+    recipients_dataset = DataUtils.read_df(RECIPIENT_CSV_PATH)
+    donors_dataset = DataUtils.read_df(DONOR_CSV_PATH)
+
     data_aggregated = DataUtils.aggregate_data(
         recipient_id,
-        DataUtils.read_df(RECIPIENT_CSV_PATH),
-        DataUtils.read_df(DONOR_CSV_PATH)
+        recipients_dataset,
+        donors_dataset
     )
 
-    # convet data_aggregated to [BoneMarrowClassificationInput] format
     BoneMarrowClassificationInput_list = []
     for _, row in data_aggregated.iterrows():
         try:
@@ -76,14 +78,20 @@ def list_donor_matches(recipient_id: str):
     for item, is_dead_value in zip(BoneMarrowClassificationInput_list, is_dead.get('probabilities_dead', [])):
         item['is_dead'] = is_dead_value
 
-    data_aggregated = bentoMl.predict_full_dataframe_regression(
+    expected_survival_time = bentoMl.predict_full_dataframe_regression(
         {"dataset": BoneMarrowClassificationInput_list})
 
+    data_aggregated['expected_survival_time'] = pd.Series(expected_survival_time.get(
+        'predictions', []))
+
     deviation_from_ideal_col = Topsis.get_deviation_from_ideal_col_TOPSIS(
-        data_aggregated,
+        DataUtils.encode_data(data_aggregated),
         stem_cell_source
     )
-    return jsonify(deviation_from_ideal_col.to_dict())
+
+    donors_dataset['deviation_from_ideal'] = deviation_from_ideal_col.values
+
+    return jsonify(donors_dataset.sort_values(by='deviation_from_ideal').to_dict(orient='records'))
 
 
 @app.route("/transplant-pairs", methods=['GET'])
@@ -159,7 +167,8 @@ def row_to_classification_input(row) -> BoneMarrowClassificationInput:
     """Convert a DataFrame row to BoneMarrowClassificationInput with validation."""
 
     return BoneMarrowClassificationInput(
-        donor_age=DataUtils.validate_value(row.get('donor_age'), 30.0, float),
+        donor_age=DataUtils.validate_value(
+            row.get('donor_age'), 30.0, float),
         donor_age_below_35=DataUtils.validate_value(
             row.get('donor_age_below_35'), 'yes', str),
         donor_ABO=DataUtils.validate_value(row.get('donor_ABO'), 'A', str),
@@ -189,15 +198,18 @@ def row_to_classification_input(row) -> BoneMarrowClassificationInput:
         gender_match="other",
         ABO_match=DataUtils.validate_value(
             row.get('ABO_match'), 'matched', str),
-        CMV_status=DataUtils.validate_value(row.get('CMV_status'), 3.0, float),
-        HLA_match=DataUtils.validate_value(row.get('HLA_match'), '10/10', str),
+        CMV_status=DataUtils.validate_value(
+            row.get('CMV_status'), 3.0, float),
+        HLA_match=DataUtils.validate_value(
+            row.get('HLA_match'), '10/10', str),
         HLA_mismatch=DataUtils.validate_value(
             row.get('HLA_mismatch'), 'matched', str),
         antigen=DataUtils.validate_value(row.get('antigen'), 0.0, float),
         allel=DataUtils.validate_value(row.get('allel'), 0.0, float),
         HLA_group_1=DataUtils.validate_value(
             row.get('HLA_group_1'), 'matched', str),
-        risk_group=DataUtils.validate_value(row.get('risk_group'), 'low', str),
+        risk_group=DataUtils.validate_value(
+            row.get('risk_group'), 'low', str),
         stem_cell_source=DataUtils.validate_value(
             row.get('stem_cell_source'), 'peripheral_blood', str)
     )
