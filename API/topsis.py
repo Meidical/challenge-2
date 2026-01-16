@@ -20,7 +20,7 @@ class Topsis:
         pos_sep, neg_sep = deviation_from_ideal(matrix_weighted, pos_ideal, neg_ideal)
         deviations = similarity_to_PIS(pos_sep, neg_sep)
 
-        deviation_from_ideal_col = Series(deviations, name="deviation_from_ideal")
+        deviation_from_ideal_col = Series(deviations, name="deviation_from_ideal").apply(lambda value: 1 - value)
         return deviation_from_ideal_col
 
 
