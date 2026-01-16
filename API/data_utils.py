@@ -147,7 +147,6 @@ def add_match_features(data_encoded: DataFrame):
     
     data_added = data_added.join(data_added.apply(compute_HLA, axis=1))
 
-    data_added["CMV_serostatus"] = data_added.apply(lambda row: MatchUtils.get_CMV_status(row["donor_CMV"], row["recipient_CMV"]), axis=1)
     data_added["CMV_status"] = data_added.apply(lambda row: MatchUtils.get_CMV_status(
         row["donor_CMV"], row["recipient_CMV"]), axis=1)
 
