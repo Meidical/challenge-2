@@ -35,32 +35,16 @@ class BoneMarrowClassificationInput(BaseModel):
     stem_cell_source: str
 
 
+class RelapseClassificationInput(BoneMarrowClassificationInput):
+    tx_post_relapse: str
+    CD34_x1e6_per_kg: float
+    CD3_x1e8_per_kg: float
+    CD3_to_CD34_ratio: float
+
 # Define the input schema for regression (includes survival_status)
-class BoneMarrowRegressionInput(BaseModel):
-    donor_age: float
-    donor_age_below_35: str
-    donor_ABO: str
-    donor_CMV: str
-    recipient_age: float
-    recipient_age_below_10: str
-    recipient_age_int: str
-    recipient_gender: str
-    recipient_body_mass: float
-    recipient_ABO: str
-    recipient_rh: str
-    recipient_CMV: str
-    disease: str
-    disease_group: str
-    gender_match: str
-    ABO_match: str
-    CMV_status: float
-    HLA_match: str
-    HLA_mismatch: str
-    antigen: float
-    allel: float
-    HLA_group_1: str
-    risk_group: str
-    stem_cell_source: str
+
+
+class BoneMarrowRegressionInput(BoneMarrowClassificationInput):
     is_dead: float
 
 
@@ -73,19 +57,21 @@ class BoneMarrowRegressionDataset(BaseModel):
 
 
 @bentoml.service(
-    resources={"cpu": "2", "memory": "500MiB"},
-    workers=1,
+    resources={"cpu": "4", "memory": "1000MiB"},
+    workers=2,
     traffic={"timeout": 20},
 )
 class BoneMarrowClassificationService:
     # Load models in __init__
     def __init__(self):
 
-        classification_tag = self.get_model_by_run_id(task="classification")
-        regression_tag = self.get_model_by_run_id(task="regression")
+        # classification_tag = self.get_model_by_run_id(task="classification")
+        # regression_tag = self.get_model_by_run_id(task="regression")
+        # relapse_tag = self.get_model_by_run_id(task="relapse")
 
-        print("Loaded classification model:", classification_tag)
-        print("Loaded regression model:", regression_tag)
+        # print("Loaded classification model:", classification_tag)
+        # print("Loaded regression model:", regression_tag)
+        # print("Loaded relapse model:", relapse_tag)
 
         # Load classification model
         self.classification_model = bentoml.models.get(
@@ -99,6 +85,12 @@ class BoneMarrowClassificationService:
         # regression_tag)
         self.regression_model_impl = self.regression_model.load_model()
 
+        # Load relapse model (not used in this service but could be added similarly)
+        self.relapse_model = bentoml.models.get(
+            "rf_tuned_optuna_relapse:latest")
+        # relapse_tag)
+        self.relapse_model_impl = self.relapse_model.load_model()
+
     # Classification endpoint - predicts survival status with probability
     @staticmethod
     def get_model_by_run_id(task):
@@ -106,7 +98,8 @@ class BoneMarrowClassificationService:
             models = bentoml.models.list()
 
             # Set MLflow tracking URI
-            mlflow.set_tracking_uri("http://127.0.0.1:5000")
+            # mlflow.set_tracking_uri("http://127.0.0.1:5000")
+            mlflow.set_tracking_uri("http://host.docker.internal:5000")
 
             # Get experiment by task
             experiment_name = f"bone-marrow-{task}"
@@ -118,8 +111,10 @@ class BoneMarrowClassificationService:
             # Get best run based on task
             if task == "classification":
                 metric = "f1_weighted_test"
-            else:
+            elif task == "regression":
                 metric = "test_rmse"
+            elif task == "relapse":
+                metric = "recall_test"
 
             # Search for best run
             runs = mlflow.search_runs(
@@ -150,8 +145,10 @@ class BoneMarrowClassificationService:
             # Return default tags
             if task == "classification":
                 return "rf_tuned_optuna_classification:latest"
-            else:
+            elif task == "regression":
                 return "et_tuned_optuna_regression:latest"
+            elif task == "relapse":
+                return "rf_tuned_optuna_relapse:latest"
 
     @bentoml.api
     def predict_classification(self, data: BoneMarrowClassificationInput) -> dict:
@@ -319,3 +316,44 @@ class BoneMarrowClassificationService:
                 "predictions": result.tolist(),
                 "error": f"Could not retrieve probabilities: {str(e)}"
             }
+
+    @bentoml.api
+    def predict_relapse(self, data: RelapseClassificationInput) -> dict:
+        # Prepare input data as pandas DataFrame with column names
+        input_df = pd.DataFrame([{
+            'donor_age': data.donor_age,
+            'donor_age_below_35': data.donor_age_below_35,
+            'donor_ABO': data.donor_ABO,
+            'donor_CMV': data.donor_CMV,
+            'recipient_age': data.recipient_age,
+            'recipient_age_below_10': data.recipient_age_below_10,
+            'recipient_age_int': data.recipient_age_int,
+            'recipient_gender': data.recipient_gender,
+            'recipient_body_mass': data.recipient_body_mass,
+            'recipient_ABO': data.recipient_ABO,
+            'recipient_rh': data.recipient_rh,
+            'recipient_CMV': data.recipient_CMV,
+            'disease': data.disease,
+            'disease_group': data.disease_group,
+            'gender_match': data.gender_match,
+            'ABO_match': data.ABO_match,
+            'CMV_status': data.CMV_status,
+            'HLA_match': data.HLA_match,
+            'HLA_mismatch': data.HLA_mismatch,
+            'antigen': data.antigen,
+            'allel': data.allel,
+            'HLA_group_1': data.HLA_group_1,
+            'risk_group': data.risk_group,
+            'stem_cell_source': data.stem_cell_source,
+            'tx_post_relapse': data.tx_post_relapse,
+            'CD34_x1e6_per_kg': data.CD34_x1e6_per_kg,
+            'CD3_x1e8_per_kg': data.CD3_x1e8_per_kg,
+            'CD3_to_CD34_ratio': data.CD3_to_CD34_ratio
+        }])
+
+        # Predict survival time
+        result = self.relapse_model_impl.predict(input_df)
+
+        return {
+            "predicted_relapse": float(result[0])
+        }

@@ -90,7 +90,8 @@ def list_donor_matches(recipient_id: str):
     )
 
     donors_dataset['deviation_from_ideal'] = deviation_from_ideal_col.values
-    donors_dataset[["HLA_match", "CMV_status", "gender_match", "ABO_match", "donor_age_group", "expected_survival_time"]] = data_aggregated[[["HLA_match", "CMV_status", "gender_match", "ABO_match", "donor_age_group", "expected_survival_time"]]]
+    donors_dataset[["HLA_match", "CMV_status", "gender_match", "ABO_match", "donor_age_group"]] = data_aggregated[
+        ["HLA_match", "CMV_status", "gender_match", "ABO_match", "donor_age_group"]]
 
     return jsonify(donors_dataset.sort_values(by='deviation_from_ideal').to_dict(orient='records'))
 
@@ -99,8 +100,10 @@ def list_donor_matches(recipient_id: str):
 def get_pairs():
     df_pairs = DataUtils.read_df(PAIR_CSV_PATH)
 
-    df_pairs_with_transplant = df_pairs[df_pairs["predicted_relapse"].notna()].to_json(orient='records')
-    df_pairs_without_transplant = df_pairs[df_pairs["predicted_relapse"].isna()].to_json(orient='records')
+    df_pairs_with_transplant = df_pairs[df_pairs["predicted_relapse"].notna()].to_json(
+        orient='records')
+    df_pairs_without_transplant = df_pairs[df_pairs["predicted_relapse"].isna(
+    )].to_json(orient='records')
 
     return jsonify({"data": {
         "with_transplant": df_pairs_with_transplant,

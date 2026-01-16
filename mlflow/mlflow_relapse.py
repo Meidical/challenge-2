@@ -1,4 +1,5 @@
 # Standard library imports
+from sklearn.impute import SimpleImputer
 import os
 import subprocess
 import sys
@@ -81,17 +82,6 @@ class MissingAttributesAdder(BaseEstimator, TransformerMixin):
         return X
 
 
-from sklearn.impute import SimpleImputer
-
-from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LinearRegression
-from sklearn.base import BaseEstimator, TransformerMixin
-import pandas as pd
-
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.linear_model import LinearRegression
-from sklearn.impute import SimpleImputer
-
 class CellDosageImputer(BaseEstimator, TransformerMixin):
     def __init__(self):
         self.model_ = None
@@ -109,7 +99,8 @@ class CellDosageImputer(BaseEstimator, TransformerMixin):
         train_data = X.dropna(subset=["CD3_x1e8_per_kg"])
         self.model_ = LinearRegression()
         self.model_.fit(
-            self.imputer_.transform(train_data[["CD34_x1e6_per_kg", "recipient_body_mass"]]),
+            self.imputer_.transform(
+                train_data[["CD34_x1e6_per_kg", "recipient_body_mass"]]),
             train_data["CD3_x1e8_per_kg"]
         )
         return self
@@ -133,11 +124,10 @@ class CellDosageImputer(BaseEstimator, TransformerMixin):
 
         # Compute CD3/CD34 ratio
         ratio_missing = X["CD3_to_CD34_ratio"].isna()
-        X.loc[ratio_missing, "CD3_to_CD34_ratio"] = X.loc[ratio_missing, "CD3_x1e8_per_kg"] / X.loc[ratio_missing, "CD34_x1e6_per_kg"]
+        X.loc[ratio_missing, "CD3_to_CD34_ratio"] = X.loc[ratio_missing,
+                                                          "CD3_x1e8_per_kg"] / X.loc[ratio_missing, "CD34_x1e6_per_kg"]
 
         return X
-
-
 
 
 def check_mlflow_server(host="127.0.0.1", port=5001, timeout=2):
@@ -191,11 +181,8 @@ def ensure_mlflow_running(host="127.0.0.1", port=5001):
         return start_mlflow_server(host, port)
 
 
-
-
-
 def import_model(tag, task, model_uri):
-    model = bentoml.mlflow.import_model(f'{tag}_{task}', model_uri)
+    model = bentoml.mlflow.import_model(f'{tag}_relapse', model_uri)
     model_name = ":".join([model.tag.name, model.tag.version])
     return model_name
 
@@ -211,16 +198,18 @@ def split_data(df, test_size=0.2):
     y = y.map({'yes': 1, 'no': 0})
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=42, stratify=y)
-    
+
     return X_train, X_test, y_train, y_test
 
 
 def impute_body_mass(data: pd.DataFrame):
     data = data.copy()
 
-    data["recipient_age_group"] = pd.cut(data["recipient_age"], bins=[0., 1., 5., 10., 15., 20., np.inf], labels=["<1", "1-5", "5-10", "10-15", "15-20", "20+"])
+    data["recipient_age_group"] = pd.cut(data["recipient_age"], bins=[
+                                         0., 1., 5., 10., 15., 20., np.inf], labels=["<1", "1-5", "5-10", "10-15", "15-20", "20+"])
 
-    group_median = data.groupby(["recipient_gender", "recipient_age_group"])["recipient_body_mass"].median()
+    group_median = data.groupby(["recipient_gender", "recipient_age_group"])[
+        "recipient_body_mass"].median()
     global_median = data["recipient_body_mass"].median()
 
     def fill_mass(row):
@@ -237,17 +226,18 @@ def impute_body_mass(data: pd.DataFrame):
     return data
 
 
-
 def encode_booleans(data: pd.DataFrame):
-    zero_mapper = {"absent", "no", "female", "mismatched", "female_to_male", "low", "nonmalignant", "peripheral_blood", "?"}
-    one_mapper  = {"present", "yes", "male", "matched", "other", "high", "malignant", "bone_marrow"}
+    zero_mapper = {"absent", "no", "female", "mismatched",
+                   "female_to_male", "low", "nonmalignant", "peripheral_blood", "?"}
+    one_mapper = {"present", "yes", "male", "matched",
+                  "other", "high", "malignant", "bone_marrow"}
 
     def map_values(value):
         if value in zero_mapper:
             return 0
         if value in one_mapper:
             return 1
-        
+
         return value
 
     return data.map(map_values)
@@ -398,12 +388,12 @@ def build_pipeline(model, cfg, use_smote=False):
     ]
 
     if use_smote:
-        steps.append(("smote", SMOTE(random_state=42, sampling_strategy="minority")))
+        steps.append(
+            ("smote", SMOTE(random_state=42, sampling_strategy="minority")))
 
     steps.append(("classifier", model))
 
     return ImbPipeline(steps)
-
 
 
 def suggest_from_grid(trial, param_grid):
@@ -623,7 +613,7 @@ def run_experiment(
     # assert X_tr.isna().sum().sum() == 0, "NaNs still exist!"
 
     if experiment["tune"]:
-        best_model, score=tune_model(
+        best_model, score = tune_model(
             pipeline,
             model_name=experiment["model"],
             X_train=X_tr,
@@ -631,7 +621,6 @@ def run_experiment(
             cv=cv,
             tuning_method=experiment["tuning_method"]
         )
-
 
         mlflow.log_params({
             k: v for k, v in best_model.get_params().items()
@@ -646,7 +635,6 @@ def run_experiment(
     y_pred_cv = cross_val_predict(
         best_model, X_tr, y_tr, cv=cv, verbose=10, n_jobs=-1)
     y_pred_test = best_model.predict(X_test)
-
 
     # Metrics on train set
     mlflow.log_metric("accuracy_train", accuracy_score(y_tr, y_pred_train))
@@ -664,7 +652,7 @@ def run_experiment(
         y_test, y_pred_test, average="weighted"))
     mlflow.log_metric("recall_test", recall_score(y_test, y_pred_test))
     mlflow.log_metric("precision_test",
-                        precision_score(y_test, y_pred_test))
+                      precision_score(y_test, y_pred_test))
 
     # Log the model with the fitted preprocessor
     signature = infer_signature(X_train, y_pred_train)

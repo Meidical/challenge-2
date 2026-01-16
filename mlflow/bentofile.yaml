@@ -1,0 +1,24 @@
+service: "bentoml_svc:BoneMarrowClassificationService"
+labels:
+  owner: luismagalhaes
+  project: bone-marrow-transplant
+include:
+  - "bentoml_svc.py"
+  - "setup.sh"
+models:
+  - "xgb_tuned_optuna_gan_classification:ypzzqcxsmgimgfwq"
+  - "et_tuned_optuna_regression:4med46hsmsd4yfwq"
+  - "rf_tuned_optuna_relapse:latest"
+python:
+  packages:
+    - scikit-learn==1.6.1
+    - pandas==2.3.1
+    - numpy==1.26.4
+    - xgboost==2.1.4
+    - pydantic==2.5.0
+    - omegaconf==2.3.0
+    - cloudpickle
+  lock_packages: false
+docker:
+  base_image: python:3.9-slim
+  setup_script: "./setup.sh"
