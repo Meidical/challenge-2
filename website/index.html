@@ -131,6 +131,28 @@
         background-color: #f8fff9;
         box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2) !important;
     }
+#waitingListContainer {
+    max-height: 500px; 
+    overflow-y: auto; 
+    padding-right: 10px;
+}
+#waitingListContainer::-webkit-scrollbar {
+    width: 6px;
+}
+
+#waitingListContainer::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+#waitingListContainer::-webkit-scrollbar-thumb {
+    background: #7CFF8A; 
+    border-radius: 10px;
+}
+
+#waitingListContainer::-webkit-scrollbar-thumb:hover {
+    background: #5cff76;
+}
   </style>
 </head>
 
@@ -266,47 +288,22 @@
       atualizarTexto();
       sw.addEventListener('change', atualizarTexto);
     });
-    //
+    //funcao get
     async function loadWaitingList() {
       try {
-        const mockData = [
-          {
-            "recipient_id": "IR001",
-            "recipient_name": "Rodrigo Artur da Silva",
-            "recipient_age": "12,3",
-            "recipient_gender": "male",
-            "disease_group": "malignant",
-            "risk_group": "low"
-          },
-          { "recipient_id": "IR002", "recipient_name": "Maria Oliveira Souza", "recipient_age": "45,0", "recipient_gender": "female", "disease_group": "benign", "risk_group": "high" },
-          { "recipient_id": "IR003", "recipient_name": "Carlos Eduardo Santos", "recipient_age": "28,5", "recipient_gender": "male", "disease_group": "malignant", "risk_group": "medium" },
-          { "recipient_id": "IR004", "recipient_name": "Ana Beatriz Ferreira", "recipient_age": "34,2", "recipient_gender": "female", "disease_group": "malignant", "risk_group": "high" },
-          { "recipient_id": "IR005", "recipient_name": "Luiz Felipe Pereira", "recipient_age": "09,1", "recipient_gender": "male", "disease_group": "benign", "risk_group": "low" },
-          { "recipient_id": "IR006", "recipient_name": "Juliana Costa Lima", "recipient_age": "52,7", "recipient_gender": "female", "disease_group": "malignant", "risk_group": "medium" },
-          { "recipient_id": "IR007", "recipient_name": "Marcos Venícius Rocha", "recipient_age": "19,4", "recipient_gender": "male", "disease_group": "benign", "risk_group": "low" },
-          { "recipient_id": "IR008", "recipient_name": "Fernanda Alencar", "recipient_age": "41,8", "recipient_gender": "female", "disease_group": "malignant", "risk_group": "high" },
-          { "recipient_id": "IR009", "recipient_name": "Ricardo Gomes Silva", "recipient_age": "60,3", "recipient_gender": "male", "disease_group": "benign", "risk_group": "medium" },
-          { "recipient_id": "IR010", "recipient_name": "Patrícia Mendes", "recipient_age": "25,0", "recipient_gender": "female", "disease_group": "malignant", "risk_group": "low" }
-        ];
+       const response = await fetch('http://localhost:5001/recipients');
+        const data = await response.json();
 
-        // Se quiser testar o fetch real, descomente as duas linhas abaixo:
-        // const response = await fetch('/api/recipients');
-        // const data = await response.json();
-
-        const data = mockData; 
+        //const data = mockData; 
         const container = document.getElementById('waitingListContainer');
         if (!container) return; 
 
         container.innerHTML = '';
 
         data.forEach(item => {
-          // Criamos o ID único para o checkbox
           const checkboxId = `waiting_${item.recipient_id}`;
-
           const div = document.createElement('div');
           div.className = 'form-check mb-2';
-
-          // Corrigido: usamos item.recipient_id e checkboxId corretamente
           div.innerHTML = `
                     <input class="form-check-input" type="checkbox" id="${checkboxId}" value="${item.recipient_id}">
                     <label class="form-check-label" for="${checkboxId}">
@@ -326,44 +323,29 @@
    document.getElementById('submitBtn').addEventListener('click', async () => {
     const isPeripheral = document.getElementById('mainSwitch').checked;
     
-    // Captura apenas os IDs dos selecionados
     const selectedIds = Array.from(
         document.querySelectorAll('#waitingListContainer input[type="checkbox"]:checked')
-    ).map(cb => cb.value); // Usando o value que definimos na carga da lista
+    ).map(cb => cb.value); 
 
     if (selectedIds.length === 0) {
         alert('Selecione pelo menos um paciente da Waiting List.');
         return;
     }
-
-    // Define a string baseada no estado do switch
-    const source = isPeripheral ? "peripheral blood" : "bone marrow";
-    
+    const source = isPeripheral ? "peripheral blood" : "bone marrow";   
     const payload = {
-        stem_cell_source: source
+        "stem_cell_source": source
     };
-
     try {
-        // Simulando a resposta para o primeiro paciente selecionado
-        // Na vida real, você faria o fetch para: `/api/recipients/${selectedIds[0]}/donor-matches`
         console.log(`Buscando matches para ${selectedIds[0]} com fonte: ${source}`);
 
-        // --- MOCKDATA DOS DOADORES ---
-        const mockDonors = [
-            { "donor_id": "D001", "donor_name": "Ana Maria Vigário", "donor_age_group": "18-35", "HLA_score": "10/10", "CMV_serostatus": "0", "gender_match": "matched", "expected_survival_time": "365", "ABO_match": "matched" },
-            { "donor_id": "D002", "donor_name": "João Pedro Silva", "donor_age_group": "36-45", "HLA_score": "9/10", "CMV_serostatus": "1", "gender_match": "mismatched", "expected_survival_time": "280", "ABO_match": "matched" },
-            { "donor_id": "D003", "donor_name": "Carla Antunes", "donor_age_group": "18-35", "HLA_score": "8/10", "CMV_serostatus": "0", "gender_match": "matched", "expected_survival_time": "150", "ABO_match": "minor mismatch" }
-        ];
+         const response = await fetch(`http://Localhost:5001/recipient/${selectedIds[0]}/donor-matches`, {
+           method: 'POST',
+           headers: { 'Content-Type': 'application/json' },
+           body: JSON.stringify(payload)
+        });
+        console.log(response)
+         const result = await response.json();
 
-        // Simulação de chamada Fetch
-        // const response = await fetch(`/api/recipients/${selectedIds[0]}/donor-matches`, {
-        //   method: 'POST',
-        //   headers: { 'Content-Type': 'application/json' },
-        //   body: JSON.stringify(payload)
-        // });
-        // const result = await response.json();
-
-        const result = mockDonors; 
         fillResultChecklist(result);
 
     } catch (error) {
@@ -375,16 +357,14 @@
 function fillResultChecklist(donors) {
     const container = document.getElementById('resultChecklistContainer');
     if (!container) return;
-
+    //
     container.innerHTML = '<h5 class="mb-3">Donors Found:</h5>';
-
+    //
     donors.forEach(donor => {
         const div = document.createElement('div');
-        // Adicionamos a classe 'donor-card' para o estilo CSS
         div.className = 'card mb-2 shadow-sm border-start border-primary donor-card';
         div.style.borderLeftWidth = '5px';
-        div.dataset.donorId = donor.donor_id; // Guarda o ID para uso futuro
-
+        div.dataset.donorId = donor.donor_id; 
         div.innerHTML = `
             <div class="card-body p-2">
                 <div class="d-flex justify-content-between align-items-center">
@@ -397,13 +377,12 @@ function fillResultChecklist(donors) {
                 </div>
             </div>
         `;
-
+        //
         div.addEventListener('click', function() {
             document.querySelectorAll('.donor-card').forEach(c => c.classList.remove('selected'));
             this.classList.add('selected');
             console.log("Doador selecionado:", donor.donor_id);
         });
-
         container.appendChild(div);
     });
 }
