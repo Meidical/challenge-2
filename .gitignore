@@ -38,6 +38,7 @@ bone_marrow_metadata.json
 *.bak
 *.tmp
 *.swp
+*.pdf
 
 # Hydra
 mlflow/outputs/
