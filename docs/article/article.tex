@@ -253,11 +253,11 @@ The dataset provides a lot of data to better understand the match and transplant
 
 \subsection{Data Exploration}
 
-One of the first steps in data exploration is to analyze if the target data is biased in any way. This can be done by checking the proportions of the \texttt{survival\_status} attribute. In this dataset, 54\% of people are alive, while 45\% are deceased, which means that the target is well balanced. Looking at the data, a possible important factor is the correlation between the ages of the recipient and the donor. Fig.\ref{fig:age_correlation} shows the correlation between the pairs:
+One of the first steps in data exploration is to analyze if the target data is biased in any way. This can be done by checking the proportions of the \texttt{survival\_status} attribute. In this dataset, 54\% of people are alive, while 45\% are deceased, which means that the target is slightly unbalanced. Looking at the data, a possible important factor is the correlation between the ages of the recipient and the donor. Fig.\ref{fig:age_correlation} shows the correlation between the pairs:
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\columnwidth]{figures/age_correlation.png}
+    \includegraphics[width=0.7\columnwidth]{figures/age_correlation.png}
     \caption{Age correlation of donor-recipient pairs}
     \label{fig:age_correlation}
 \end{figure}
@@ -305,7 +305,7 @@ On average, the tuned models without oversampling had better overall performance
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\columnwidth]{figures/tune_vs_untune.png}
+    \includegraphics[width=0.8\columnwidth]{figures/tune_vs_untune.png}
     \caption{Performance of tuned (no oversampling) vs. untuned models}
     \label{fig:tune_vs_untune}
 \end{figure}
@@ -320,7 +320,7 @@ Another observation made was when comparing the cross-validation F1-Score on the
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\columnwidth]{figures/train_vs_test.png}
+    \includegraphics[width=1\columnwidth]{figures/train_vs_test.png}
     \caption{Comparison between train and test set performance across experiments}
     \label{fig:train_vs_test}
 \end{figure}
@@ -333,7 +333,7 @@ Some additional experiments were made on the best-performing models comparing di
 As can be seen in Fig. \ref{fig:use_clf}, using classification as a feature to predict regression considerably improved model performance.
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\columnwidth]{figures/classification_influence.png}
+    \includegraphics[width=0.8\columnwidth]{figures/classification_influence.png}
     \caption{Use of classification as feature for regression}
     \label{fig:use_clf}
 \end{figure}
@@ -356,7 +356,7 @@ It should be noted that SHAP analysis was performed strictly post hoc and was no
 Fig.\ref{fig:clf_shap} shows a beeswarm plot of the most important features for the classification model.
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\columnwidth]{figures/clf_shap.png}
+    \includegraphics[width=0.8\columnwidth]{figures/clf_shap.png}
     \caption{SHAP Analysis for classification model}
     \label{fig:clf_shap}
 \end{figure}
@@ -364,7 +364,7 @@ Fig.\ref{fig:clf_shap} shows a beeswarm plot of the most important features for 
 Fig.\ref{fig:reg_shap} shows a beeswarm plot of the top 3 features for the regression model.
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\columnwidth]{figures/reg_shap.png}
+    \includegraphics[width=0.7\columnwidth]{figures/reg_shap.png}
     \caption{SHAP Analysis for regression model}
     \label{fig:reg_shap}
 \end{figure}
