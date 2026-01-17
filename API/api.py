@@ -1,14 +1,17 @@
+import math
 import os
 
 import pandas as pd
 import numpy as np
 from flask import Flask, request, jsonify
-from boneNarrowClassification import BoneMarrowClassificationInput, BoneMarrowRegressionInput
+from boneNarrowClassification import BoneMarrowClassificationInput
 from bento_ml_client import BentoMLClient
 
 # import logic module
 from data_utils import DataUtils
 from topsis import Topsis
+
+bentoMl = BentoMLClient()
 
 GLOBAL_PATH = os.path.dirname(os.path.abspath(__file__))
 RECIPIENT_CSV_PATH = os.path.join(
@@ -71,7 +74,6 @@ def list_donor_matches(recipient_id: str):
             print(f"Error processing row: {e}")
             continue
 
-    bentoMl = BentoMLClient()
     is_dead = bentoMl.predict_full_dataframe_classification(
         {"dataset": BoneMarrowClassificationInput_list})
 
@@ -142,36 +144,43 @@ def create_pair():
     DataUtils.write_df(PAIR_CSV_PATH, df_pairs)
 
     # return df_pairs.to_json(orient='records')
-    return jsonify({"msg": f"Row with id: {pair_id}, successfully added!"})
+    return jsonify({"pair_id": pair_id})
 
 
-@app.route("/transplant-pairs/<pair_id>", methods=['PATCH'])
-def fill_pair_transplant_info():
+@app.route("/transplant-pairs/<pair_id>", methods=['POST'])
+def fill_pair_transplant_info(pair_id: str):
     data = request.get_json()
 
-    stem_cell_source = data["stem_cell_source"]
     CD34_per_kg = data["CD34_x1e6_per_kg"]
     CD3_per_kg = data["CD3_x1e8_per_kg"]
-
+    tx_post_relapse = data["tx_post_relapse"]
     df_pairs = DataUtils.read_df(PAIR_CSV_PATH)
 
-    pair_row = df_pairs.loc[df_pairs["pair_id"] == df_pairs]
-    pair_row["stem_cell_source"] = stem_cell_source
-    pair_row["CD34_x1e6_per_kg"] = CD34_per_kg
-    pair_row["CD3_x1e8_per_kg"] = CD3_per_kg
-    pair_row["CD3_to_CD34_ratio"] = CD3_per_kg / CD34_per_kg
+    # 1) Get the *single* row as a Series
+    pair_df = df_pairs.loc[df_pairs["pair_id"] == pair_id]
+    if pair_df.empty:
+        return jsonify({"error": "pair_id not found"}), 404
 
-    # call model and feed data.drop("predicted_relapse")
-    # receive relapse value and append to the "predicted_relapse" attrib
-    # update the row in the original dataframe and save in csv
-    # send relapse value
+    pair_row = pair_df.iloc[0]  # Series, like in your donor-matches loop
 
-    # df_pairs = pd.concat([df_pairs, pair_row], ignore_index=True)
-    # DataUtils.write_df(PAIR_CSV_PATH, df_pairs)
+    # 2) Build the classification input from that row
+    bm_input = row_to_classification_input(pair_row)
+    bm_dict = bm_input.model_dump()  # plain Python dict
 
-    relapse = "0"
-    # return df_pairs.to_json(orient='records')
-    return jsonify({"predicted_relapse": relapse})
+    # 3) Add transplant-specific fields
+    bm_dict["stem_cell_source"] = stem_cell_source.replace(" ", "_")
+    bm_dict["CD34_x1e6_per_kg"] = CD34_per_kg
+    bm_dict["CD3_x1e8_per_kg"] = CD3_per_kg
+    bm_dict["tx_post_relapse"] = tx_post_relapse
+
+    if CD34_per_kg in [0, None] or pd.isna(CD34_per_kg):
+        bm_dict["CD3_to_CD34_ratio"] = None
+    else:
+        bm_dict["CD3_to_CD34_ratio"] = CD3_per_kg / CD34_per_kg
+
+    predicted_relapse = bentoMl.predict_relapse({
+        "data": bm_dict})
+    return jsonify(predicted_relapse)
 
 
 def row_to_classification_input(row) -> BoneMarrowClassificationInput:
@@ -204,9 +213,8 @@ def row_to_classification_input(row) -> BoneMarrowClassificationInput:
         disease=DataUtils.validate_value(row.get('disease'), 'ALL', str),
         disease_group=DataUtils.validate_value(
             row.get('disease_group'), 'malignant', str),
-        # gender_match=DataUtils.validate_value(
-        #    row.get('gender_match'), 'other', str),
-        gender_match="other",
+        gender_match=DataUtils.validate_value(
+            row.get('gender_match'), 'other', str),
         ABO_match=DataUtils.validate_value(
             row.get('ABO_match'), 'matched', str),
         CMV_status=DataUtils.validate_value(

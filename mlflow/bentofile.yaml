@@ -18,6 +18,8 @@ python:
     - pydantic==2.5.0
     - omegaconf==2.3.0
     - cloudpickle
+    - mlflow
+    - imblearn
   lock_packages: false
 docker:
   base_image: python:3.9-slim

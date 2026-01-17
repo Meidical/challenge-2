@@ -45,3 +45,7 @@ class BentoMLClient:
     def predict_full_dataframe_regression(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         logger.debug("Sending regression dataset prediction request")
         return self._post("predict_full_dataframe_regression", payload)
+
+    def predict_relapse(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        logger.debug("Sending relapse dataset prediction request")
+        return self._post("predict_relapse", payload)
