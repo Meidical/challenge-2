@@ -132,6 +132,11 @@ def get_pairs():
 def create_pair():
     data = request.get_json()
 
+    required_fields = ["recipient_id", "donor_id"]
+    for field in required_fields:
+        if field not in data:
+            return jsonify({"error": f"Missing '{field}' in request body"}), 400
+
     recipient_id = data["recipient_id"]
     donor_id = data["donor_id"]
 
@@ -166,6 +171,12 @@ def create_pair():
 def fill_pair_transplant_info(pair_id: str):
     data = request.get_json()
 
+    required_fields = ["CD34_x1e6_per_kg",
+                       "CD3_x1e8_per_kg", "tx_post_relapse"]
+    for field in required_fields:
+        if field not in data:
+            return jsonify({"error": f"Missing '{field}' in request body"}), 400
+
     CD34_per_kg = data["CD34_x1e6_per_kg"]
     CD3_per_kg = data["CD3_x1e8_per_kg"]
     tx_post_relapse = data["tx_post_relapse"]
@@ -183,7 +194,6 @@ def fill_pair_transplant_info(pair_id: str):
     bm_dict = bm_input.model_dump()  # plain Python dict
 
     # 3) Add transplant-specific fields
-    bm_dict["stem_cell_source"] = stem_cell_source.replace(" ", "_")
     bm_dict["CD34_x1e6_per_kg"] = CD34_per_kg
     bm_dict["CD3_x1e8_per_kg"] = CD3_per_kg
     bm_dict["tx_post_relapse"] = tx_post_relapse

@@ -1,15 +1,21 @@
 import logging
+import os
 from typing import Any, Dict
 
 import requests
 
 logger = logging.getLogger(__name__)
 
-ENDPOINT = "http://127.0.0.1:3000"
+IS_DOCKER = os.getenv("IS_DOCKER", "false").lower() == "true"
+
+if IS_DOCKER:
+    BENTOML_URL = "http://bentoml:3000"  # Nome do serviço no docker-compose
+else:
+    BENTOML_URL = "http://localhost:3000"  # Localmente
 
 
 class BentoMLClient:
-    def __init__(self, endpoint: str = ENDPOINT):
+    def __init__(self, endpoint: str = BENTOML_URL):
         if not endpoint:
             raise ValueError("Endpoint cannot be empty")
         self.endpoint = endpoint.rstrip('/')

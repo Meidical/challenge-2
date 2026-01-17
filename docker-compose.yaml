@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  flask-api:
+    image: luismagalhaes/bone-marrow-api:latest
+    ports:
+      - "5001:5001"
+    environment:
+      - IS_DOCKER=true
+    depends_on:
+      - bentoml
+  bentoml:
+    image: luismagalhaes/bone_marrow_classification_service:bestshort
+    ports:
+      - "3000:3000"
