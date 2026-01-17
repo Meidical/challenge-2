@@ -10,7 +10,6 @@ mlflow/mlartifacts/
 mlruns/
 mlartifacts/
 challenge2/
-outputs/
 
 *.db
 *.sqlite
@@ -40,4 +39,6 @@ bone_marrow_metadata.json
 *.tmp
 *.swp
 
+# Hydra
 mlflow/outputs/
+outputs/

@@ -68,9 +68,11 @@
 \maketitle
 
 \begin{abstract}
-Pediatric allogeneic hematopoietic stem cell transplantation (HSCT) is a potentially curative therapy for malignant and non-malignant diseases, but outcomes depend strongly on donor--recipient compatibility and graft characteristics. Donor selection is therefore a high-stakes, time-sensitive decision in which clinicians must balance immunogenetic risk against urgency and donor availability.
+Pediatric allogeneic hematopoietic stem cell transplantation (HSCT) is a potentially curative therapy for malignant and non-malignant diseases, but outcomes depend strongly on donor-recipient compatibility and graft characteristics. Donor selection is therefore a high-stakes, time-sensitive decision in which clinicians must balance immunogenetic risk against urgency and donor availability.
 This work proposes a decision-support system integrated with predictive artificial intelligence models. The multi-criteria decision-making method TOPSIS (Technique for Order Preference by Similarity to Ideal Solution) is employed to rank and select the most suitable donor for a given recipient. One of the decision criteria is the predicted post-transplant survival time of the recipient (benefit criterion), which is estimated using a machine learning model trained on a published pediatric unrelated-donor cohort.
-The overall goal is to support transparent, reproducible, and clinically meaningful donor--recipient matching and allocation decisions in pediatric HSCT.
+The overall goal is to support transparent, reproducible, and clinically meaningful donor-recipient matching and allocation decisions in pediatric HSCT.
+Experimental results demonstrate that an XGBoost (eXtreme Gradient Boosting) model with the help of Generative Adversarial Networks (GANs) achieved the best predictive performance for post-transplant probability of survival, reaching an F1-Score of 0.65. This probability was then used to predict the expected post-transplant survival time in case of death. For this regression task, the best performing model was an Extra Trees Regressor model, which achieved a Root Mean Square Error (RMSE) of 560, significantly outperforming baseline level (913 RMSE).
+
 \end{abstract}
 
 
@@ -293,7 +295,7 @@ The section evaluates the performance of different ML models for the prediction 
 
 \subsection{Survival Classification}
 
-Out of all the experiments, the tuned Random Forest Classifier with GAN-augmented data obtained the best result, with an F1-score of 0.62 on the test set, a precision of 0.57, a recall of 0.61 and an accuracy of 0.62. However, the model that, on average, achieved the best results was the Logistic Regression, having the base untuned model ranked as the best model not utilizing GANs.
+Out of all the experiments, the tuned XGBoost with GAN-augmented data obtained the best result, with an F1-score of 0.65 on the test set, a precision of 0.57, a recall of 0.61 and an accuracy of 0.62. However, the model that, on average, achieved the best results was the Logistic Regression, having the base untuned model ranked as the best model not utilizing GANs.
 
 Bayesian hyperparameter tuning using Optuna did not consistently outperform grid search or random search in test performance. However, it reached very similar results significantly faster and sometimes even outperforming other methods.
 
@@ -341,7 +343,7 @@ Moreover, predicting the survivability as a probability instead of a binary feat
 
 As with classification, different numbers of cross-validation folds were tested and 5 folds was observed to produce the best results.
 
-In the end, the regression model that preformed best was a tuned LightGBM model using survival status as a probability.
+In the end, the regression model that preformed best was a tuned Extra Trees Regressor model using survival status as a probability.
 
 \subsection{SHAP Analysis}
 To improve model explainability, a general SHapley Additive exPlanation (SHAP) analysis was performed and plotted for the best-performing classification and regression model~\cite{Lundberg2017SHAP}.
