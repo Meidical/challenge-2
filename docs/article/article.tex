@@ -89,6 +89,7 @@ Donor selection is typically guided by high-resolution Human Leukocyte Antigen (
 Beyond “match counts,” functional and locus-specific approaches, referring to specific genomic positions associated with immunogenetic variability, can refine immunological risk; for example, classification of HLA-DPB1 mismatches into permissive vs non-permissive groups has been associated with clinically relevant differences in outcomes \cite{Fleischhauer2012}. In parallel, the availability of large transplantation registries and richer clinical data has motivated machine learning (ML) approaches to outcome prediction (e.g., early mortality, GVHD risk). Prior work has shown that ML can produce clinically meaningful risk stratification, but performance and generalizability depend heavily on data preparation choices and robust validation designs \cite{Shouval2015}, \cite{Arai2019}, \cite{Tang2020}. \\
 
 Despite established donor selection principles, there is still a lack of integrated, transparent frameworks that (i) formalize donor-recipient allocation under multiple clinical criteria and (ii) incorporate data-driven outcome predictions using only pre-decision variables. This work proposes a decision-support system integrated with predictive artificial intelligence models. Donor allocation is formulated as a multi-criteria decision-making problem, in which alternative ranking is performed using the Technique for Order Preference by Similarity to Ideal Solution (TOPSIS), with criterion weights calculated by the Analytic Hierarchy Process (AHP). Recipient post-transplant survival time is estimated by a machine learning model trained on a dataset \cite{Sikora2010} derived from a published pediatric unrelated-donor cohort \cite{Kalwak2010}. The predicted survival outcome is incorporated as one of the decision criteria, yielding an ordered list of candidate matches for clinical review.
+After a donor is chosen, another model will try to predict the patient's relapse based on previous matching features and new transplant related ones, to ensure the right attention from professionals.
 
 \section{State-of-the-Art}
 
@@ -139,13 +140,22 @@ The transition from classical statistical models to ML requires rigorous validat
 While ML models provide a risk score (prediction), clinical decision-making requires selecting the best donor among several available options (allocation). The literature suggests a ``prediction-to-decision'' gap \cite{Shouval2014}. Multiple Attribute Decision Making (MADM) methodologies, such as TOPSIS (Technique for Order Preference by Similarity to Ideal Solution), described by Tzeng \& Huang \cite{Tzeng2011}, allow for the integration of ML predictions (as criteria) into an ordered ranking of alternatives. This hybrid approach (ML to predict outputs, TOPSIS to rank candidates) represents an improvement for clinical decision support systems, transforming raw probabilities into actionable recommendations.
 
 \section{Methodology}
+The main system aims to use the transformations necessary to join, process and retain the data necessary for each stage of the alocation and estimation process. While the original dataset was used to train the models, exploratory analysis and context of the specialization, synthetic datasets were need to be created in order to be able to test and use the system in the prespective of a professional.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/data_flow.png}
+    \caption{Data Flow Diagram}
+    \label{fig:data_flow}
+\end{figure}
+
 The proposed methodology formulates pediatric bone marrow donor–recipient allocation as a multi-criteria decision-making problem. The objective is to generate a ranked list of feasible donor–recipient pairs and provide transparent decision support to the responsible clinician, who retains full responsibility for the final donor selection.
 Alternative ranking is performed using the Technique for Order Preference by Similarity to Ideal Solution (TOPSIS). Criterion weights are obtained using the Analytic Hierarchy Process (AHP), which is applied exclusively to compute the preference vector (weights) of the decision criteria and validated through consistency analysis (consistency ratio). AHP is not applied directly to rank alternatives due to scalability limitations when the number of potential donors is large, which would require a quadratic number of pairwise comparisons.
 The proposed framework explicitly separates criteria weighting (AHP), predictive modeling (machine learning), and final ranking (TOPSIS), thereby supporting transparency, clinical interpretability, and auditability.
 The decision criteria considered in the ranking process are: HLA Match, CMV Serostatus, Donor Age Group, Gender Match, ABO Match, and Expected Survival Time. The relative importance for these criteria was defined through literature review, as shown in Table~\ref{tab:decision_criteria}. The Predicted Survival Time has the lowest value of importance, as it is a supplementary criterion to support decision-making rather than the primary driver of donor selection. Because hematopoietic stem cell can have two sources (bone marrow or peripheral blood), if the source is bone marrow, the ABO compatibility criterion will have an higher importance than donor-recipient sex match, and if the source is peripheral blood, the ABO compatibility criterion will have a lower importance than donor-recipient sex match, because in this process the blood is not manipulated as in bone marrow donation, where red blood cells are removed to avoid hemolysis in case of ABO incompatibility~\cite{jimenez_jimenez_allogeneic_2025}.
 
 \begin{table*}[htbp]
-\caption{Decision Criteria for Donor--Recipient Matching}
+\caption{Decision Criteria for Donor-Recipient Matching}
 \label{tab:decision_criteria}
 \centering
 \begin{tabularx}{\textwidth}{c l c X c}
@@ -247,7 +257,16 @@ survival\_status & If the recipient is dead or alive \\\\
 \end{tabularx}
 \end{table}
 
-Several data quality issues were identified and addressed prior to model development. Missing values, placeholder symbols (e.g., ``?''), and anomalous entries were detected in variables such as donor\_CMV, CD3\_x1e8\_per\_kg, CD3\_to\_CD34\_ratio, ANC\_recovery, PLT\_recovery, time\_to\_acute\_GvHD\_III\_IV, extensive\_chronic\_GvHD, HLA\_match with caution. Analize the usefulness in outcome of some abstracted attributes like donor\_age\_belo\_35, recipient\_age\_below\_10, HLA\_mismatch. Encode various categorical values with onehot-encoding since there is a small range of categorical values. Creation of synthetic data attributes for tissue type and donor gender to make possible HLA and gender match calculation during multi-criteria decision making. Check and handle bias and minority classes in outcome features using stratification and oversampling. Handle highly correlated features by removing the less performing ones, simplifying the generalization with few data rows.
+Several data quality issues were identified and addressed prior to model development. Missing recipient\_body\_mass values were imputed using recipient age bins, separated by sex, since they are strongly correlated (aprox. 0.89) and can provide more accurate values than simple imputing methods. A simple linear regression model was used to impute missing CD3\_x1e8\_per\_kg values using CD34\_x1e6\_per\_kg and recipient\_body\_mass, also due to their strong correlation and linear nature. Analize the usefulness in outcome of some abstracted attributes like donor\_age\_below\_35, recipient\_age\_below\_10, HLA\_mismatch. Encode various categorical values with onehot-encoding since there is a small range of categorical values. Creation of synthetic data attributes for tissue type and donor gender to make possible HLA and gender match calculation during multi-criteria decision making. Check and handle bias and minority classes in outcome features using stratification and oversampling. Handle highly correlated features by removing the less performing ones, simplifying the generalization with few data rows.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\columnwidth]{figures/cd3_cd34_body_mass_corr.png}
+    \caption{Correlation between CD3$^{+}$, CD34$^{+}$ and recipient body mass}
+    \label{fig:cd3_cd34_body_mass_correlation}
+\end{figure}
+
+A new missing\_(feature) attribute was created for each value equal to "?", particularly in (donor-recipient)\_CMV, ABO\_match, (donor-recipient)\_ABO and CMV\_status.
 
 The dataset provides a lot of data to better understand the match and transplant variables influence in survivability. It will be useful for finding correlations and importance of each attribute during the allocation fase, but will need to be simplified in order to help the model predict and generalize better with the small sample size.
 
@@ -265,8 +284,9 @@ One of the first steps in data exploration is to analyze if the target data is b
 This graph shows that a lot of transplants are made with donor-recipient pairs where the donor is between the ages of 25--45 years old and the recipient between 5--15 years old. Another thing to explore could be the correlation between the age gap of the pair. However, analysis suggests that the donor-recipient age gap doesn't have a strong enough correlation with either survival time or survival status of the recipient. Another attribute worth exploring is how blood type compatibility affects survival. Exploratory analysis showed that, while in case there is a blood type match the rate of survival is very close to 50\%, in case of a blood type mismatch the rate of survival drops to close to 40\%, showing a possible small correlation between these attributes. Gender matching can also be an important factor to consider in compatibility; however, analysis shows that gender matching alone isn't sufficient to form a correlation.
 
 \subsection{Feature Engineering}
-Several features were added, deleted or altered in some way to better help the model predict the target variable. Some of the new engineered features include the addition of the \texttt{age\_gap} feature, which is calculated using the absolute difference between the recipient-donor pair; the binning of the \texttt{donor\_age} and \texttt{recipient\_age} features; and the \texttt{total\_mismatches} feature, which is calculated using the total number of mismatched allels and antigens between donor and recipient.
+By default, the dataset already comes with various abstracted features. A small number were added or altered. Some of the new engineered features include the addition of the \texttt{age\_gap} feature, which is calculated using the absolute difference between the recipient-donor pair; the binning of the \texttt{donor\_age} and \texttt{recipient\_age} features; and the \texttt{total\_mismatches} feature, which is calculated using the total number of mismatched allels and antigens between donor and recipient.
 
+Careful selection was important in order to reduce the high dimensionality of the data and help the models generalize better as well as reduce overfitting.
 \subsection{Oversampling}
 \subsubsection{SMOTE}
 Regarding oversampling, two types were tested in this project. One of them is Synthetic Minority Over-sampling Technique (SMOTE) \cite{Chawla_2002}. SMOTE is used in unbalanced datasets to create more samples of the minority class using a k-nearest neighbours algorithm. This way, new samples are not equal to existing ones, but slightly different variations of existing minority class samples. In this case, slight variations of SMOTE were used such as SMOTE-NC (for nominal and countinous data) and Adaptive Synthetic Sampling (ADASYN).
