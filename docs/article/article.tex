@@ -298,6 +298,19 @@ Generative Adversarial Networks (GANs) utilize neural networks to learn and gene
 \section{Experiments}
 Approximately 150 experiments with different models and model configurations were made. To facilitate this, MLflow and Hydra were used for tracking and result reproducibility across model configurations.\cite{Zaharia2018MLflow} \cite{Yadan2019Hydra}
 
+\section{System Architecture}
+The system architecture is composed of two modules that work together to achieve the desired functionality. These two modules are:
+\begin{itemize}
+    \item A prediction sytem with a api that exposes endpoints for predicting survival classification, survival time regression and relapse with BentoML.
+    \item A simple flask api that serves a web application for user interaction and calls the BentoML prediction system api for predictions.
+\end{itemize}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.7\columnwidth]{figures/arquitecture_diagram.png}
+    \caption{Architecture Diagram}
+    \label{fig:architecture_diagram}
+\end{figure}
+
 
 \subsection{Survival Classification}
 For survival classification, several model families were tested. All models were tested in three different configurations: default parameters, tuned and tuned with SMOTE. Every tuned model was also tested with different feature engineering steps. Additionally, the best models were also tested using GANs with different combinations of epochs and synthetic sample sizes. Different number of training cross validation folds and train-test splits were also considered. Finally, different methods of hyperparameter optimization (Grid Search, Random Search and Optuna) were explored and compared. \cite{optuna_2019} 
