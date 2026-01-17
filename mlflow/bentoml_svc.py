@@ -64,15 +64,6 @@ class BoneMarrowRegressionDataset(BaseModel):
 class BoneMarrowClassificationService:
     # Load models in __init__
     def __init__(self):
-
-        # classification_tag = self.get_model_by_run_id(task="classification")
-        # regression_tag = self.get_model_by_run_id(task="regression")
-        # relapse_tag = self.get_model_by_run_id(task="relapse")
-
-        # print("Loaded classification model:", classification_tag)
-        # print("Loaded regression model:", regression_tag)
-        # print("Loaded relapse model:", relapse_tag)
-
         # Load classification model
         self.classification_model = bentoml.models.get(
             "xgb_tuned_optuna_gan_classification:ypzzqcxsmgimgfwq")
@@ -82,13 +73,11 @@ class BoneMarrowClassificationService:
         # Load regression model
         self.regression_model = bentoml.models.get(
             "et_tuned_optuna_regression:4med46hsmsd4yfwq")
-        # regression_tag)
         self.regression_model_impl = self.regression_model.load_model()
 
         # Load relapse model (not used in this service but could be added similarly)
         self.relapse_model = bentoml.models.get(
             "rf_tuned_optuna_relapse:latest")
-        # relapse_tag)
         self.relapse_model_impl = self.relapse_model.load_model()
 
     # Classification endpoint - predicts survival status with probability

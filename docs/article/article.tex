@@ -345,6 +345,11 @@ As with classification, different numbers of cross-validation folds were tested 
 
 In the end, the regression model that preformed best was a tuned Extra Trees Regressor model using survival status as a probability.
 
+
+\subsection{Relapse Classification}
+
+Finally, for relapse prediction, due to the big similarity of the dataset to the previous classification model, only the models that performed best were tested. In this case, the XGBoost with GAN augmentation was also the best model. However, due to the limited dataset size, and significant class inbalance, prediction results were not satisfactory. Even utilizing GAN augmentation, the best model achieved a macro F1-Score of 0.47.
+
 \subsection{SHAP Analysis}
 To improve model explainability, a general SHapley Additive exPlanation (SHAP) analysis was performed and plotted for the best-performing classification and regression model~\cite{Lundberg2017SHAP}.
 Each dot represents a single data point of the respective feature.
@@ -374,6 +379,15 @@ Some features are very strong and clean indicators of the model's prediction. Fo
 Furthermore, we can clearly see the importance of predicting the survival status of the patient as a feature for the regression model.
 
 \section{Conclusion}
+\subsection{Main findings}
+The results indicate that simpler models, particularly logistic regression, exhibit strong generalization performance in small clinical datasets, while more complex models are prone to overfitting. Although GAN-based data augmentation improved the performance of tree-based and gradient boosting models, its performance was highly dependent on data quality. Furthermore, incorporating survival classification outputs as features for survival time regression significantly reduced prediction error, demonstrating the benefit of multi-stage modeling strategies.
+
+\subsection{Limitations}
+\subsubsection{Small Dataset}
+The biggest limitation of this project was the limited dataset size. A size of around 180 total samples, means there are not enough samples for the model to create a good generalization and the test is too small to have a clear idea of how the model would preform with new data. 
+
+\subsubsection{Class imbalance}
+Additionally the dataset shows a small class imbalance for the \texttt{survival\_status} feature which was able to be remedied utilizing oversampling techniques. However, there is a much more significant unbalance for the feature \texttt{relapse}.
 
 \section*{Acknowledgment}
 The authors thank the lecturers of the Master in Artificial Intelligence Engineering (MEIA) at the Porto School of Engineering (ISEP) for the guidance and support provided throughout the development of this project.

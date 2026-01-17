@@ -811,7 +811,7 @@ def run_mlflow(df, cfg):
             )
 
             best_clf = mlflow.sklearn.load_model(
-                "mlflow-artifacts:/824855913946379719/models/m-e65d6cfa03dc42a4b73b7570b04a8813/artifacts")
+                model_path)
 
             mlflow.set_tag("upstream_classifier_run", best_run_id)
 

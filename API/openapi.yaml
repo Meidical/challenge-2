@@ -1,0 +1,183 @@
+swagger: "2.0"
+info:
+  title: Bone Marrow Transplant API
+  version: "1.0.0"
+  description: API for bone marrow transplant recipient/donor matching and prediction
+
+host: localhost:5001
+schemes:
+  - http
+basePath: /
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+paths:
+  /recipients:
+    get:
+      summary: Get all recipients
+      responses:
+        '200':
+          description: List of recipients
+          schema:
+            type: array
+            items:
+              type: object
+
+  /recipient/{recipient_id}/donor-matches:
+    post:
+      summary: List donor matches for a recipient
+      parameters:
+        - name: recipient_id
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              stem_cell_source:
+                type: string
+                enum:
+                  - bone marrow
+                  - peripheral blood
+      responses:
+        '200':
+          description: List of donor matches
+          schema:
+            type: array
+            items:
+              type: object
+
+  /transplant-pairs:
+    get:
+      summary: Get all transplant pairs
+      responses:
+        '200':
+          description: Transplant pairs with/without transplant info
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  with_transplant:
+                    type: array
+                    items:
+                      type: object
+                  without_transplant:
+                    type: array
+                    items:
+                      type: object
+    post:
+      summary: Create a new transplant pair
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              recipient_id:
+                type: string
+              donor_id:
+                type: string
+      responses:
+        '200':
+          description: Created pair ID
+          schema:
+            type: object
+            properties:
+              pair_id:
+                type: string
+
+  /transplant-pairs/{pair_id}:
+    post:
+      summary: Fill transplant info for a pair and predict relapse
+      parameters:
+        - name: pair_id
+          in: path
+          required: true
+          type: string
+        - name: body
+          in: body
+          required: true
+          schema:
+            type: object
+            properties:
+              CD34_x1e6_per_kg:
+                type: number
+              CD3_x1e8_per_kg:
+                type: number
+              tx_post_relapse:
+                type: string
+      responses:
+        '200':
+          description: Predicted relapse info
+          schema:
+            type: object
+
+definitions:
+  BoneMarrowClassificationInput:
+    type: object
+    properties:
+      donor_age:
+        type: number
+      donor_age_below_35:
+        type: string
+      donor_ABO:
+        type: string
+      donor_CMV:
+        type: string
+      recipient_age:
+        type: number
+      recipient_age_below_10:
+        type: string
+      recipient_age_int:
+        type: string
+      recipient_gender:
+        type: string
+      recipient_body_mass:
+        type: number
+      recipient_ABO:
+        type: string
+      recipient_rh:
+        type: string
+      recipient_CMV:
+        type: string
+      disease:
+        type: string
+      disease_group:
+        type: string
+      gender_match:
+        type: string
+      ABO_match:
+        type: string
+      CMV_status:
+        type: number
+      HLA_match:
+        type: string
+      HLA_mismatch:
+        type: string
+      antigen:
+        type: number
+      allel:
+        type: number
+      HLA_group_1:
+        type: string
+      risk_group:
+        type: string
+      stem_cell_source:
+        type: string
+      tx_post_relapse:
+        type: string
+      CD34_x1e6_per_kg:
+        type: number
+      CD3_x1e8_per_kg:
+        type: number
+      CD3_to_CD34_ratio:
+        type: number
