@@ -1,4 +1,4 @@
-import math
+from flasgger import Swagger
 import os
 
 import pandas as pd
@@ -22,6 +22,8 @@ PAIR_CSV_PATH = os.path.join(
     GLOBAL_PATH, "..", "datasets", "dev", "transplant_pair_list.csv")
 
 app = Flask(__name__)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+swagger = Swagger(app, template_file=os.path.join(BASE_DIR, 'openapi.yaml'))
 
 
 @app.route("/recipients", methods=['GET'])
