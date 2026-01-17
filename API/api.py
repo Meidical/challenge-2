@@ -13,13 +13,26 @@ from topsis import Topsis
 
 bentoMl = BentoMLClient()
 
-GLOBAL_PATH = os.path.dirname(os.path.abspath(__file__))
-RECIPIENT_CSV_PATH = os.path.join(
-    GLOBAL_PATH, "..", "datasets", "dev", "recipient_waiting_list.csv")
-DONOR_CSV_PATH = os.path.join(
-    GLOBAL_PATH, "..", "datasets", "dev", "donor_list.csv")
-PAIR_CSV_PATH = os.path.join(
-    GLOBAL_PATH, "..", "datasets", "dev", "transplant_pair_list.csv")
+IS_DOCKER = os.getenv("IS_DOCKER", "false").lower() == "true"
+
+if IS_DOCKER:
+    # Paths dentro do container Docker
+    GLOBAL_PATH = os.path.dirname(os.path.abspath(__file__))
+    RECIPIENT_CSV_PATH = os.path.join(
+        GLOBAL_PATH, "datasets", "dev", "recipient_waiting_list.csv")
+    DONOR_CSV_PATH = os.path.join(
+        GLOBAL_PATH, "datasets", "dev", "donor_list.csv")
+    PAIR_CSV_PATH = os.path.join(
+        GLOBAL_PATH, "datasets", "dev", "transplant_pair_list.csv")
+else:
+    # Paths localmente (relativo à pasta do API)
+    GLOBAL_PATH = os.path.dirname(os.path.abspath(__file__))
+    RECIPIENT_CSV_PATH = os.path.join(
+        GLOBAL_PATH, "..", "datasets", "dev", "recipient_waiting_list.csv")
+    DONOR_CSV_PATH = os.path.join(
+        GLOBAL_PATH, "..", "datasets", "dev", "donor_list.csv")
+    PAIR_CSV_PATH = os.path.join(
+        GLOBAL_PATH, "..", "datasets", "dev", "transplant_pair_list.csv")
 
 app = Flask(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -237,4 +250,4 @@ def row_to_classification_input(row) -> BoneMarrowClassificationInput:
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    app.run(debug=True, host='0.0.0.0', port=5001)
