@@ -4,7 +4,7 @@ import os
 import pandas as pd
 import numpy as np
 from flask import Flask, request, jsonify
-from boneNarrowClassification import BoneMarrowClassificationInput
+from boneNarrowClassification import BoneMarrowClassificationInput, RelapseClassificationInput
 from bento_ml_client import BentoMLClient
 
 # import logic module
@@ -171,14 +171,14 @@ def fill_pair_transplant_info(pair_id: str):
     data = request.get_json()
 
     required_fields = ["CD34_x1e6_per_kg",
-                       "CD3_x1e8_per_kg", "tx_post_relapse"]
+                       "CD3_x1e8_per_kg", "stem_cell_source"]
     for field in required_fields:
         if field not in data:
             return jsonify({"error": f"Missing '{field}' in request body"}), 400
 
     CD34_per_kg = data["CD34_x1e6_per_kg"]
     CD3_per_kg = data["CD3_x1e8_per_kg"]
-    tx_post_relapse = data["tx_post_relapse"]
+    stem_cell_source = data["stem_cell_source"]
     df_pairs = DataUtils.read_df(PAIR_CSV_PATH)
 
     # 1) Get the *single* row as a Series
@@ -187,15 +187,15 @@ def fill_pair_transplant_info(pair_id: str):
         return jsonify({"error": "pair_id not found"}), 404
 
     pair_row = pair_df.iloc[0]  # Series, like in your donor-matches loop
-
+    # print(f"Processing pair_row: {pair_row}")
     # 2) Build the classification input from that row
-    bm_input = row_to_classification_input(pair_row)
+    bm_input = row_to_relapse_classification_input(pair_row)
     bm_dict = bm_input.model_dump()  # plain Python dict
-
+    print(f"Built bm_dict: {bm_dict}")
     # 3) Add transplant-specific fields
     bm_dict["CD34_x1e6_per_kg"] = CD34_per_kg
     bm_dict["CD3_x1e8_per_kg"] = CD3_per_kg
-    bm_dict["tx_post_relapse"] = tx_post_relapse
+    bm_dict["stem_cell_source"] = stem_cell_source
 
     if CD34_per_kg in [0, None] or pd.isna(CD34_per_kg):
         bm_dict["CD3_to_CD34_ratio"] = None
@@ -204,9 +204,6 @@ def fill_pair_transplant_info(pair_id: str):
 
     predicted_relapse = bentoMl.predict_relapse({
         "data": bm_dict})
-    
-    # df_pairs.loc[df_pairs["pair_id"] == pair_id, ["CD34_x1e6_per_kg", "CD3_x1e8_per_kg", "CD3_to_CD34_ratio", "stem_cell_source", "predicted_relapse"]] = [CD34_per_kg, CD3_per_kg, (CD3_per_kg / CD34_per_kg, stem_cell_source, predicted_relapse)]
-    # DataUtils.write_df(PAIR_CSV_PATH, df_pairs)
 
     return jsonify(predicted_relapse)
 
@@ -259,6 +256,23 @@ def row_to_classification_input(row) -> BoneMarrowClassificationInput:
             row.get('risk_group'), 'low', str),
         stem_cell_source=DataUtils.validate_value(
             row.get('stem_cell_source'), 'peripheral_blood', str)
+    )
+
+
+def row_to_relapse_classification_input(row) -> RelapseClassificationInput:
+    """Convert a DataFrame row to RelapseClassificationInput with validation."""
+
+    base_input = row_to_classification_input(row)
+    return RelapseClassificationInput(
+        **base_input.model_dump(),
+        CD34_x1e6_per_kg=DataUtils.validate_value(
+            row.get('CD34_x1e6_per_kg'), 5.0, float),
+        CD3_x1e8_per_kg=DataUtils.validate_value(
+            row.get('CD3_x1e8_per_kg'), 2.0, float),
+        CD3_to_CD34_ratio=DataUtils.validate_value(
+            row.get('CD3_to_CD34_ratio'), 0.4, float),
+        tx_post_relapse=DataUtils.validate_value(
+            row.get('tx_post_relapse'), 'no', str)
     )
 
 

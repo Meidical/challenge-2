@@ -33,7 +33,7 @@ class BoneMarrowRegressionInput(BoneMarrowClassificationInput):
 
 
 class RelapseClassificationInput(BoneMarrowClassificationInput):
-    tx_post_relapse: float
-    CD34_x1e6_per_kg: float
-    CD3_x1e8_per_kg: float
-    CD3_to_CD34_ratio: float
+    tx_post_relapse: str = ""
+    CD34_x1e6_per_kg: float = 0
+    CD3_x1e8_per_kg: float = 0
+    CD3_to_CD34_ratio: float = 0
