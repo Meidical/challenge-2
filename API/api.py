@@ -187,11 +187,11 @@ def fill_pair_transplant_info(pair_id: str):
         return jsonify({"error": "pair_id not found"}), 404
 
     pair_row = pair_df.iloc[0]  # Series, like in your donor-matches loop
-    # print(f"Processing pair_row: {pair_row}")
+
     # 2) Build the classification input from that row
     bm_input = row_to_relapse_classification_input(pair_row)
     bm_dict = bm_input.model_dump()  # plain Python dict
-    print(f"Built bm_dict: {bm_dict}")
+
     # 3) Add transplant-specific fields
     bm_dict["CD34_x1e6_per_kg"] = CD34_per_kg
     bm_dict["CD3_x1e8_per_kg"] = CD3_per_kg
