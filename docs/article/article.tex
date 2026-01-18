@@ -257,16 +257,16 @@ survival\_status & If the recipient is dead or alive \\\\
 \end{tabularx}
 \end{table}
 
-Several data quality issues were identified and addressed prior to model development. Missing recipient\_body\_mass values were imputed using recipient age bins, separated by sex, since they are strongly correlated (aprox. 0.89) and can provide more accurate values than simple imputing methods. A simple linear regression model was used to impute missing CD3\_x1e8\_per\_kg values using CD34\_x1e6\_per\_kg and recipient\_body\_mass, also due to their strong correlation and linear nature. Analize the usefulness in outcome of some abstracted attributes like donor\_age\_below\_35, recipient\_age\_below\_10, HLA\_mismatch. Encode various categorical values with onehot-encoding since there is a small range of categorical values. Creation of synthetic data attributes for tissue type and donor gender to make possible HLA and gender match calculation during multi-criteria decision making. Check and handle bias and minority classes in outcome features using stratification and oversampling. Handle highly correlated features by removing the less performing ones, simplifying the generalization with few data rows.
+Several data quality issues were identified and addressed prior to model development. Missing \texttt{recipient\_body\_mass} values were imputed using recipient age bins, separated by sex, since they are strongly correlated (aprox. 0.89) and can provide more accurate values than simple imputing methods. A simple linear regression model was used to impute missing \texttt{CD3\_x1e8\_per\_kg} values using \texttt{CD34\_x1e6\_per\_kg} and \texttt{recipient\_body\_mass}, also due to their strong correlation and linear nature. Analize the usefulness in outcome of some abstracted attributes like \texttt{donor\_age\_below\_35}, \texttt{recipient\_age\_below\_10}, \texttt{HLA\_mismatch}. Encode various categorical values with one-hot encoding since there is a small range of categorical values. Creation of synthetic data attributes for tissue type and donor gender to make possible HLA and gender match calculation during multi-criteria decision making. Check and handle bias and minority classes in outcome features using stratification and oversampling. Handle highly correlated features by removing the less performing ones, simplifying the generalization with few data rows.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\columnwidth]{figures/cd3_cd34_body_mass_corr.png}
+    \includegraphics[width=0.8\columnwidth]{figures/cd3_cd34_body_mass_corr.png}
     \caption{Correlation between CD3$^{+}$, CD34$^{+}$ and recipient body mass}
     \label{fig:cd3_cd34_body_mass_correlation}
 \end{figure}
 
-A new missing\_(feature) attribute was created for each value equal to "?", particularly in (donor-recipient)\_CMV, ABO\_match, (donor-recipient)\_ABO and CMV\_status.
+A new \texttt{missing\_(feature)} attribute was created for each value equal to "?", particularly in \texttt{(donor-recipient)\_CMV}, \texttt{ABO\_match}, \texttt{(donor-recipient)\_ABO} and \texttt{CMV\_status}.
 
 The dataset provides a lot of data to better understand the match and transplant variables influence in survivability. It will be useful for finding correlations and importance of each attribute during the allocation fase, but will need to be simplified in order to help the model predict and generalize better with the small sample size.
 
@@ -322,6 +322,10 @@ Linear classification models, including the Logistic Regression were evaluated a
 \subsection{Survival Time Regression}
 
 To predict survival time tests were performed on largely the same model families as the step above. For the linear models family, ridge regression and elastic-net were tested. All models were tested with and without the addition of the classification variable predicted by the best classification model, tuned and untuned. Additionally, the classification variable was tested being predicted as a binary variable or as a probability. Metrics such as the Root Mean Squared Error (RMSE), Mean Average Error (MAE) and the coefficient of determination ($R^2$), were saved for both train and test sets and used to compare the regression models. A baseline RMSE value was also set (RMSE = 913), which would represent a simple model in which every patient is given the average survival time.
+
+\subsection{Relapse Classification}
+
+
 
 \section{Results and Discussion}
 The section evaluates the performance of different ML models for the prediction of both a classification target and a regression target and analyzes the impact of feature engineering, hyperparameter tuning and data augmentation techniques.
