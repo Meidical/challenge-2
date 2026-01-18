@@ -644,12 +644,9 @@
         if (response.ok) {
           const result = await response.json();
           Swal.close();
-          console.log(result)
-          const relapseStatus = result.predicted_relapse.toUpperCase();
 
           const container = document.querySelectorAll('#resultChecklistContainer')[1];
-          renderDashboard(container, pairData, relapseStatus, cd34Value, cd3Value, sourceText);
-
+          renderDashboard(container, pairData, result.predicted_relapse, cd34Value, cd3Value, sourceText);
         } else {
           const errorData = await response.json();
           Swal.fire('Erro', errorData.error || 'Falha na predição', 'error');
@@ -660,21 +657,27 @@
       }
     });
 
-    function renderDashboard(container, pair, relapse, cd34, cd3, source) {
-      const isNoRelapse = relapse.toUpperCase() === 'NO';
+    function renderDashboard(container, pair, relapseValue, cd34, cd3, source) {
+      // Tratamento para resposta numérica: 0 = NO, 1 = YES
+      // Se vier como string "0", o == também funciona
+      const isNoRelapse = relapseValue == 0;
+      const relapseText = isNoRelapse ? "NO" : "YES";
+
       const statusColor = isNoRelapse ? '#28a745' : '#dc3545';
       const bgColor = isNoRelapse ? '#f0fff4' : '#fff5f5';
+
       const panel = container.closest('.panel.large');
       if (panel) {
         panel.style.backgroundColor = bgColor;
       }
+
       container.innerHTML = `
         <div class="card border-0 shadow-sm" style="background: ${bgColor}; border-radius: 12px; height: 100%;">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="m-0 fw-bold" style="color: #333;">Transplant Outcome Prediction</h4>
                     <span class="badge p-3 fs-5" style="background-color: ${statusColor}; min-width: 120px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-                        RELAPSE: ${relapse.toUpperCase()}
+                        RELAPSE: ${relapseText}
                     </span>
                 </div>
 
