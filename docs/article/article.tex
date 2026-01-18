@@ -12,6 +12,9 @@
 \usepackage{placeins}
 \usepackage{tabularx}
 \usepackage[hidelinks]{hyperref}
+\usepackage{dblfloatfix}
+\usepackage{booktabs}
+
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 
@@ -277,25 +280,25 @@ One of the first steps in data exploration is to analyze if the target data is b
 
 This graph shows that a lot of transplants are made with donor-recipient pairs where the donor is between the ages of 25--45 years old and the recipient between 5--15 years old. Another thing to explore could be the correlation between the age gap of the pair. However, analysis suggests that the donor-recipient age gap doesn't have a strong enough correlation with either survival time or survival status of the recipient. Another attribute worth exploring is how blood type compatibility affects survival. Exploratory analysis showed that, while in case there is a blood type match the rate of survival is very close to 50\%, in case of a blood type mismatch the rate of survival drops to close to 40\%, showing a possible small correlation between these attributes. Gender matching can also be an important factor to consider in compatibility; however, analysis shows that gender matching alone isn't sufficient to form a correlation.
 
+In addition to this, it can also be noted a very big imbalance in the target \texttt{relapse}, where 85\% of samples are negative.
+
 \subsection{Feature Engineering}
 By default, the dataset already comes with various abstracted features. A small number were added or altered. Some of the new engineered features include the addition of the \texttt{age\_gap} feature, which is calculated using the absolute difference between the recipient-donor pair; the binning of the \texttt{donor\_age} and \texttt{recipient\_age} features; and the \texttt{total\_mismatches} feature, which is calculated using the total number of mismatched allels and antigens between donor and recipient.
 
 Careful selection was important in order to reduce the high dimensionality of the data and help the models generalize better as well as reduce overfitting.
 \subsection{Oversampling}
-\subsubsection{SMOTE}
-Regarding oversampling, two types were tested in this project. One of them is Synthetic Minority Over-sampling Technique (SMOTE) \cite{Chawla_2002}. SMOTE is used in unbalanced datasets to create more samples of the minority class using a k-nearest neighbours algorithm. This way, new samples are not equal to existing ones, but slightly different variations of existing minority class samples. In this case, slight variations of SMOTE were used such as SMOTE-NC (for nominal and countinous data) and Adaptive Synthetic Sampling (ADASYN).
+Regarding oversampling, two types were tested in this project:
+\subsubsection{Synthetic Minority Over-sampling Technique (SMOTE)}
+SMOTE is used in unbalanced datasets to create more samples of the minority class using a k-nearest neighbours algorithm \cite{Chawla_2002}. This way, new samples are not equal to existing ones, but slightly different variations of existing minority class samples. In this case, slight variations of SMOTE were used such as SMOTE-NC (for nominal and countinous data) and Adaptive Synthetic Sampling (ADASYN).
 
-\subsubsection{GANs}
-Generative Adversarial Networks (GANs) utilize neural networks to learn and generate synthetic data, which makes them a more robust and powerful alternative to other techniques \cite{gans}.
+\subsubsection{Generative Adversarial Networks (GANs)}
+GANs utilize neural networks to learn and generate synthetic data, which makes them a more robust and powerful alternative to other techniques \cite{gans}.
 
-
-\section{Experiments}
-Approximately 150 experiments with different models and model configurations were made. To facilitate this, MLflow and Hydra were used for tracking and result reproducibility across model configurations.\cite{Zaharia2018MLflow} \cite{Yadan2019Hydra}
 
 \section{System Architecture}
-For this experiment, the system architecture is composed woth two modules that work together to achieve the desired functionality. These two modules are:
+For this project, the system architecture is composed of two modules that work together to achieve the desired functionality. These two modules are:
 \begin{itemize}
-    \item A prediction sytem with a api that exposes endpoints for predicting survival classification, survival time regression and relapse with BentoML. The prediction models with the best scores were trainned and imported from MLflow.
+    \item A prediction system with a api that exposes endpoints for predicting survival classification, survival time regression and relapse with BentoML \cite{Yang2024BentoML}. The prediction models with the best scores were trainned and imported from MLflow \cite{Zaharia2018MLflow}.
     \item A simple flask api that serves a web application for user interaction and calls the BentoML prediction system api for predictions.
 \end{itemize}
 \begin{figure}[htbp]
@@ -305,17 +308,20 @@ For this experiment, the system architecture is composed woth two modules that w
     \label{fig:architecture_diagram}
 \end{figure}
 
+\section{Experiments}
+Approximately 150 experiments with different models and model configurations were made. To facilitate this, MLflow and Hydra were used for tracking and result reproducibility across model configurations. \cite{Yadan2019Hydra}
+
 
 \subsection{Survival Classification}
 For survival classification, several model families were tested. All models were tested in three different configurations: default parameters, tuned and tuned with SMOTE. Every tuned model was also tested with different feature engineering steps. Additionally, the best models were also tested using GANs with different combinations of epochs and synthetic sample sizes. Different number of training cross validation folds and train-test splits were also considered. Finally, different methods of hyperparameter optimization (Grid Search, Random Search and Optuna) were explored and compared. \cite{optuna_2019} 
 
-As metrics, the F1-score on the test set was the main metric used for comparison but several other metrics were also used such as the accuracy, precision, recall and cross-validation F1-score of the train set.
+As metrics, the F1-score on the test set was the main metric used for final model comparison but several other metrics were also used such as the accuracy, precision, recall and cross-validation F1-score of the train set.
 
 Linear classification models, including the Logistic Regression were evaluated as a baseline. Tree ensemble models like the Random Forest (RF) and the Extra Trees (ET), and gradient boosting models like the XGBoost (XGB) and the LightGBM (LGBM) were also tested. Alternating Decision Trees (ADTrees) and Support Vector Machines (SVMs) were also considered.
 
 \subsection{Survival Time Regression}
 
-To predict survival time tests were performed on largely the same model families as the step above. For the linear models family, ridge regression and elastic-net were tested. All models were tested with and without the addition of the classification variable predicted by the best classification model, tuned and untuned. Additionally, the classification variable was tested being predicted as a binary variable or as a probability. Metrics such as the Root Mean Squared Error (RMSE), Mean Average Error (MAE) and the coefficient of determination ($R^2$), were saved for both train and test sets and used to compare the regression models. A baseline RMSE value was also set (RMSE = 913), which would represent a simple model in which every patient is given the average survival time.
+To predict survival time, tests were performed on largely the same model families as the classification task. For the linear models family, ridge regression and elastic-net were tested. All models were tested with and without the addition of the classification variable predicted by the best classification model, tuned and untuned. Additionally, the classification variable was tested being predicted as a binary variable or as a probability. Metrics such as the Root Mean Squared Error (RMSE), Mean Average Error (MAE) and the coefficient of determination ($R^2$), were saved for both train and test sets and used to compare the regression models. A baseline RMSE value was also set (RMSE = 913), which represents a simple model in which every patient is given the average survival time of the dataset.
 
 \subsection{Relapse Classification}
 
@@ -328,7 +334,7 @@ The section evaluates the performance of different ML models for the prediction 
 
 \subsection{Survival Classification}
 
-Out of all the experiments, the tuned XGBoost with GAN-augmented data obtained the best result, with an F1-score of 0.65 on the test set, a precision of 0.57, a recall of 0.61 and an accuracy of 0.62. However, the model that, on average, achieved the best results was the Logistic Regression, having the base untuned model ranked as the best model not utilizing GANs.
+Out of all the experiments, the tuned XGBoost with GAN-augmented data obtained the best result, with an F1-score of 0.68 on the test set, a precision of 0.58, a recall of 0.63 and an accuracy of 0.64. However, the model that, on average, achieved the best results was the Logistic Regression, having the base untuned model ranked as the best model not utilizing GANs.
 
 Bayesian hyperparameter tuning using Optuna did not consistently outperform grid search or random search in test performance. However, it reached very similar results significantly faster and sometimes even outperforming other methods.
 
@@ -345,11 +351,9 @@ On average, the tuned models without oversampling had better overall performance
 
 This is possibly due to the small dataset size which causes many of the more complex models, even on default parameters, to overfit the training data, causing poor performance on the test set. Due to this, simpler models are often able to create a better generalization.
 
-GAN-augmentation had a significant impact in model performance for tree models, while negatively affecting linear models. Gradient boosting models also were positively affected. Several GAN configuration were attempted and it was observed that the one that produced the best results overall was a sample size of 10 synthetic entries for class 0, 20 synthetic entries for class 1 and the the number of epochs set to 300.
+GAN-augmentation had a significant impact in model performance for tree models, while negatively affecting linear models. Gradient boosting models also were positively affected. Several GAN configurations were attempted and it was observed that the one that produced the best results overall results was a sample size of 10 synthetic entries for class 0, 20 synthetic entries for class 1 and the the number of epochs set to 300.
 
-This observation is consistent with the previous hypothesis. With more data, tree models don't overfit the training set as much, and get better results. However, it is important to note that data quality also plays a big role, because simply generating more data using GANs doesn't always yield better results. With little data, GANs can also overfit the train set and generate synthetic data that is too close to the real set which only adds noise. On the other hand, reducing the number of epochs too much can also cause them to not learn enough about the data. 
-
-Another observation made was when comparing the cross-validation F1-Score on the train set with the test set. As can be seen in the sample of parallel coordinates plot in Fig.\ref{fig:train_vs_test}, 12 random experiments were chosen, and compared. It was observed that experiments that scored a high F1-score on cross-validation with the train set performed consistently worse on the test set than those that scored a lower value.
+Another observation was made when comparing the cross-validation F1-Score on the train set with the test set. As can be seen in the sample of parallel coordinates plot in Fig.\ref{fig:train_vs_test}, 12 random experiments were chosen, and compared. It was observed that experiments that scored a high F1-score on cross-validation with the train set performed consistently worse on the test set than those that scored a lower value.
 
 \begin{figure}[htbp]
     \centering
@@ -359,11 +363,13 @@ Another observation made was when comparing the cross-validation F1-Score on the
 \end{figure}
 \FloatBarrier
 
+These observations are consistent with the previous hypothesis. With more data, tree models don't overfit the training set as much, and get better results. However, it is important to note that data quality also plays a big role, because simply generating more data using GANs doesn't always yield better results. With little data, GANs can also overfit the train set and generate synthetic data that is too close to the real set which only adds noise. On the other hand, reducing the number of epochs too much can also cause them to not learn enough about the data. 
+
 Some additional experiments were made on the best-performing models comparing different values for number of cross validation folds and train/test split ratios. It was observed that training the model with 5 folds and a test set size of 15\% of the total dataset yielded better results.
 
 \subsection{Survival Time Regression}
 
-As can be seen in Fig. \ref{fig:use_clf}, using classification as a feature to predict regression considerably improved model performance.
+As can be seen in Fig. \ref{fig:use_clf}, using classification prediction as a feature to predict regression considerably improved model performance.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.8\columnwidth]{figures/classification_influence.png}
@@ -387,9 +393,9 @@ Finally, for relapse prediction, due to the big similarity of the dataset to the
 To improve model explainability, a general SHapley Additive exPlanation (SHAP) analysis was performed and plotted for the best-performing classification and regression model~\cite{Lundberg2017SHAP}.
 Each dot represents a single data point of the respective feature.
 The x-axis represents the SHAP value, which is a measure of the impact of each feature on the model's prediction (a negative shap means the model is more likely to predict the patient's survival, while a positive value means the opposite). The color of each dot represents the value of the feature for that data point.
-A red feature represents a high value and a blue feature represents a low value.
-For example, in the feature \texttt{age\_gap}, a red dot represents a high age gap and a blue dot represents a low age gap.
-The ordering along the y-axis does not affect interpretability and is used only to improve visualization.
+A red dot represents a high value and a blue dot represents a low value.
+For example, in the feature \texttt{age\_gap}, a red dot represents a high age gap value and a blue dot represents a low age gap value.
+The ordering of the dots along the y-axis does not affect interpretability and is used only to improve visualization.
 It should be noted that SHAP analysis was performed strictly post hoc and was not used to guide feature engineering decisions.
 Fig.\ref{fig:clf_shap} shows a beeswarm plot of the most important features for the classification model.
 \begin{figure}[htbp]
@@ -407,13 +413,14 @@ Fig.\ref{fig:reg_shap} shows a beeswarm plot of the top 3 features for the regre
     \label{fig:reg_shap}
 \end{figure}
 
-Some features are very strong and clean indicators of the model's prediction. For example, the feature \texttt{risk\_group\_low} being positive is a big indicator that the model will predict the patients survival. To add to this, we can observe that most binary features form separated clusters, indicating a consistent directional impact on the model's prediction depending on feature value. However, that's not always the case, as we can see in the feature \texttt{ABO\_match\_mismatched} or \texttt{donor\_CMV\_present}. We can also observe that the engineered features \texttt{age\_gap} and \texttt{recipient\_age\_bin} had a strong impact on the model's prediction. 
+Some features are very strong and clean indicators of the model's prediction. For example, the feature \texttt{risk\_group\_low} being positive is a big indicator that the model will predict the patients survival. To add to this, it can be observed that most binary features form separated clusters, indicating a consistent directional impact on the model's prediction depending on feature value. However, that's not always the case, as can be seen in the feature \texttt{ABO\_match\_mismatched} or \texttt{donor\_CMV\_present}. It can also be observed that the engineered features \texttt{age\_gap} and \texttt{recipient\_age\_bin} had a strong impact on the model's prediction. 
 
-Furthermore, we can clearly see the importance of predicting the survival status of the patient as a feature for the regression model.
+Furthermore, it can clearly be seen that the survival status of the patient is a strong indicator of the model's prediction for the regression model.
 
 \section{Conclusion}
 \subsection{Main findings}
-The results indicate that simpler models, particularly logistic regression, exhibit strong generalization performance in small clinical datasets, while more complex models are prone to overfitting. Although GAN-based data augmentation improved the performance of tree-based and gradient boosting models, its performance was highly dependent on data quality. Furthermore, incorporating survival classification outputs as features for survival time regression significantly reduced prediction error, demonstrating the benefit of multi-stage modeling strategies.
+The results indicate that simpler models, particularly logistic regression, exhibit strong generalization performance in small datasets, while more complex models are more prone to overfitting. Although GAN-based data augmentation improved the performance of tree-based and gradient boosting models, its performance was highly dependent on data quality. Incorporating survival classification outputs as features for survival time regression significantly reduced prediction error. Furthermore, the survival time prediction succeeded in yielding significantly better results than baseline levels.
+
 Beyond predictive performance, this work demonstrates the feasibility of integrating ML models into a structured multi-criteria decision-support pipeline for donor allocation. By explicitly separating outcome prediction (ML), preference elicitation (AHP), and alternative ranking (TOPSIS), the proposed framework supports transparent, reproducible, and auditable clinical decision-making. The resulting ranked donor–recipient lists provide clinicians with interpretable recommendations that combine data-driven predictions with established clinical priorities, thereby facilitating informed and accountable allocation decisions.
 
 
@@ -422,7 +429,7 @@ Beyond predictive performance, this work demonstrates the feasibility of integra
 The biggest limitation of this project was the limited dataset size. A size of around 180 total samples, means there are not enough samples for the model to create a good generalization and the test is too small to have a clear idea of how the model would preform with new data. 
 
 \subsubsection{Class imbalance}
-Additionally the dataset shows a small class imbalance for the \texttt{survival\_status} feature which was able to be remedied utilizing oversampling techniques. However, there is a much more significant unbalance for the feature \texttt{relapse}.
+Additionally the dataset shows a small class imbalance for the \texttt{survival\_status} variable which was able to be remedied utilizing oversampling techniques. However, there is a much more significant imbalance for the variable \texttt{relapse}.
 
 \subsubsection{Decision-Level Validation}
 While the predictive models were evaluated quantitatively, the decision-support component has not yet been prospectively validated in real clinical workflows. Future work should include clinician-in-the-loop evaluations to assess usability, interpretability, and real-world impact on donor selection decisions.
@@ -433,5 +440,62 @@ The authors thank the lecturers of the Master in Artificial Intelligence Enginee
 
 \bibliographystyle{IEEEtran}
 \bibliography{references}
+
+\clearpage
+\onecolumn
+\appendices
+\section{Additional Survival Classification Results}
+\begin{table}[htbp]
+    \caption{Examples of Survival Classification Experiment Results}
+    \label{tab:clf_appendix}
+    \centering
+    \begin{tabular}{l l l l c c c c c c}
+        \toprule
+        \textbf{Model}                          &
+        \textbf{Tuning}                         &
+        \textbf{SMOTE}                          &
+        \textbf{GAN}                            &
+        \multicolumn{2}{c}{\textbf{GAN Config}} &
+        \multicolumn{4}{c}{\textbf{Metrics}}                                                                \\
+        \cmidrule(lr){5-6} \cmidrule(lr){7-10}
+                                                &     &     &     &
+        \textbf{Epochs}                         &
+        \textbf{Samples}                        &
+        \textbf{F1$_{test}$}                   &
+        \textbf{F1$_{cv}$}                      &
+        \textbf{Precision}                      &
+        \textbf{Recall}                                                                                     \\
+        \midrule
+        Logistic Regression & No  & No  & No  & --  & --    & 0.55 & 0.53 & 0.50 & 0.53 \\
+        Logistic Regression & Yes & No  & No  & --  & --    & 0.50 & 0.54 & 0.44 & 0.30 \\
+        Logistic Regression & Yes & Yes & No  & --  & --    & 0.51 & 0.57 & 0.46 & 0.46 \\
+        Logistic Regression & Yes & Yes & No  & 300 & 10/20 & 0.58 & 0.53 & 0.53 & 0.53 \\
+        \addlinespace
+
+        Random Forest & No  & No  & No  & --  & --    & 0.44 & 0.61 & 0.38 & 0.30 \\
+        Random Forest & Yes & No  & No  & --  & --    & 0.37 & 0.65 & 0.27 & 0.23 \\
+        Random Forest & Yes & Yes & No  & --  & --    & 0.51 & 0.63 & 0.46 & 0.46 \\
+        Random Forest & Yes & Yes & No  & 300 & 10/20 & 0.62 & 0.67 & 0.65 & 0.59 \\
+        \addlinespace
+
+        XGBoost & No  & No  & No  & --  & --    & 0.41 & 0.55 & 0.37 & 0.46 \\
+        XGBoost & Yes & No  & No  & --  & --    & 0.48 & 0.62 & 0.41 & 0.53 \\
+        XGBoost & Yes & Yes & No  & --  & --    & 0.48 & 0.63 & 0.43 & 0.53 \\
+        XGBoost & Yes & Yes & No  & 300 & 10/20 & 0.68 & 0.57 & 0.66 & 0.61 \\
+        XGBoost & Yes & Yes & No  & 200 & 10/20 & 0.51 & 0.59 & 0.48 & 0.55 \\
+        \addlinespace
+
+        LightGBM & No  & No  & No  & --  & --    & 0.44 & 0.55 & 0.40 & 0.46 \\
+        LightGBM & Yes & No  & No  & --  & --    & 0.41 & 0.57 & 0.35 & 0.38 \\
+        LightGBM & Yes & Yes & No  & --  & --    & 0.44 & 0.59 & 0.40 & 0.46 \\
+        \addlinespace
+
+        Extra Trees & No  & No  & No  & --  & --    & 0.38 & 0.59 & 0.33 & 0.38 \\
+        Extra Trees & Yes & No  & No  & --  & --    & 0.38 & 0.63 & 0.33 & 0.38 \\
+        Extra Trees & Yes & Yes & No  & --  & --    & 0.41 & 0.62 & 0.35 & 0.38 \\
+
+        \bottomrule
+    \end{tabular}
+\end{table}
 
 \end{document}
