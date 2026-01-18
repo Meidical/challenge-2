@@ -325,7 +325,9 @@ To predict survival time tests were performed on largely the same model families
 
 \subsection{Relapse Classification}
 
+Various models were tested: Logistic Regression, k-Nearest Neighbors, Stochastic Gradient Descent, Random Forests and more. Model performance was primarily assessed through confusion matrices, ROC curves and precision–recall curves. Resampling techniques were applied to address class imbalance. In addition, the class weight parameter was set to balanced (when resampling was not used), and recall was selected as the main scoring metric during model optimization. These strategies improved significantly positive classification performance across all models. Feature selection was preferred over dimensionality reduction, because in the medical field, understanding the contribution of each feature to the predicted outcome is critical.
 
+Despite the best efforts, achieving favorable results with a such limited dataset proved to be quite challenging. It was required to implement multiple iterative adjustments while carefully avoiding extensive hyperparameter tuning or frequent evaluation on the test data to prevent overfitting.
 
 \section{Results and Discussion}
 The section evaluates the performance of different ML models for the prediction of both a classification target and a regression target and analyzes the impact of feature engineering, hyperparameter tuning and data augmentation techniques.
