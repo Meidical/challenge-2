@@ -205,6 +205,9 @@ def fill_pair_transplant_info(pair_id: str):
     predicted_relapse = bentoMl.predict_relapse({
         "data": bm_dict})
 
+    df_pairs.loc[df_pairs["pair_id"] == pair_id, ["CD34_x1e6_per_kg", "CD3_x1e8_per_kg", "CD3_to_CD34_ratio", "stem_cell_source", "predicted_relapse"]] = [CD34_per_kg, CD3_per_kg, (CD3_per_kg / CD34_per_kg), stem_cell_source, predicted_relapse]
+    DataUtils.write_df(PAIR_CSV_PATH, df_pairs)
+
     return jsonify(predicted_relapse)
 
 
