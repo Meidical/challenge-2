@@ -137,7 +137,9 @@ The transition from classical statistical models to ML requires rigorous validat
 \end{enumerate}
 
 \subsection{From prediction to allocation}
-While ML models provide a risk score (prediction), clinical decision-making requires selecting the best donor among several available options (allocation). The literature suggests a ``prediction-to-decision'' gap \cite{Shouval2014}. Multiple Attribute Decision Making (MADM) methodologies, such as TOPSIS (Technique for Order Preference by Similarity to Ideal Solution), described by Tzeng \& Huang \cite{Tzeng2011}, allow for the integration of ML predictions (as criteria) into an ordered ranking of alternatives. This hybrid approach (ML to predict outputs, TOPSIS to rank candidates) represents an improvement for clinical decision support systems, transforming raw probabilities into actionable recommendations.
+While ML models provide a risk score (prediction), clinical decision-making requires selecting the best donor among several available options (allocation). The literature suggests a ``prediction-to-decision'' gap \cite{Shouval2014}. Multiple Attribute Decision Making (MADM) methodologies, such as TOPSIS (Technique for Order Preference by Similarity to Ideal Solution), described by Tzeng \& Huang \cite{Tzeng2011}, allow for the integration of ML predictions (as criteria) into an ordered ranking of alternatives.
+Beyond predictive performance, the literature emphasizes the need to integrate ML models into structured clinical decision workflows to ensure transparency, traceability, and clinician oversight \cite{tun_trust_2025}. Multi-criteria decision analysis methods provide a structured and rigorous framework to combine heterogeneous clinical factors and predictive information into reproducible and auditable rankings \cite{dolan_multi-criteria_2010}. However, few studies report end-to-end architectures that integrate validated predictive models with formal decision-making pipelines in transplantation contexts \cite{preti_implementation_2024}. This gap motivates the development of the proposed integrated decision-support framework.
+
 
 \section{Methodology}
 The main system aims to use the transformations necessary to join, process and retain the data necessary for each stage of the alocation and estimation process. While the original dataset was used to train the models, exploratory analysis and context of the specialization, synthetic datasets were need to be created in order to be able to test and use the system in the prespective of a professional.
@@ -154,46 +156,38 @@ Alternative ranking is performed using the Technique for Order Preference by Sim
 The proposed framework explicitly separates criteria weighting (AHP), predictive modeling (machine learning), and final ranking (TOPSIS), thereby supporting transparency, clinical interpretability, and auditability.
 The decision criteria considered in the ranking process are: HLA Match, CMV Serostatus, Donor Age Group, Gender Match, ABO Match, and Expected Survival Time. The relative importance for these criteria was defined through literature review, as shown in Table~\ref{tab:decision_criteria}. The Predicted Survival Time has the lowest value of importance, as it is a supplementary criterion to support decision-making rather than the primary driver of donor selection. Because hematopoietic stem cell can have two sources (bone marrow or peripheral blood), if the source is bone marrow, the ABO compatibility criterion will have an higher importance than donor-recipient sex match, and if the source is peripheral blood, the ABO compatibility criterion will have a lower importance than donor-recipient sex match, because in this process the blood is not manipulated as in bone marrow donation, where red blood cells are removed to avoid hemolysis in case of ABO incompatibility~\cite{jimenez_jimenez_allogeneic_2025}.
 
-\begin{table*}[htbp]
-\caption{Decision Criteria for Donor-Recipient Matching}
+\begin{table}[htbp]
+\caption{Decision Criteria for Donor--Recipient Matching}
 \label{tab:decision_criteria}
 \centering
-\begin{tabularx}{\textwidth}{c l c X c}
+\small
+\begin{tabularx}{\columnwidth}{c l c X}
 \hline
-\textbf{Rank} & \textbf{Criterion} & \textbf{Priority} & \textbf{Justification} & \textbf{Sources} \\
+\textbf{Rank} & \textbf{Criterion} & \textbf{Priority} & \textbf{Sources} \\
 \hline
-1 & HLA Compatibility & Critical & 
-Remains the primary determinant of transplant outcome. High-resolution matching at HLA-A, -B, -C and -DRB1 is the gold standard. Mismatches are consistently associated with reduced survival and increased complications, making HLA assessment the starting point of donor selection, even among alternative donors. &
-\cite{dehn_selection_2019, kollman_effect_2016,jimenez_jimenez_allogeneic_2025} \\
-\hline
-2 & Donor Age & Very High & 
-The most consistently validated non-HLA factor associated with overall survival. Younger donors (18--32 years) are associated with superior outcomes. Each 10-year increase in donor age increases mortality risk by approximately 5.5\%, and donor age should therefore be prioritized over other secondary factors. &
+1 & HLA Compatibility & Critical &
+\cite{dehn_selection_2019,kollman_effect_2016,jimenez_jimenez_allogeneic_2025} \\
+
+2 & Donor Age & Very High &
 \cite{kollman_effect_2016,jimenez_jimenez_allogeneic_2025} \\
-\hline
-3 & CMV Serostatus & High & 
-Particularly relevant for CMV-negative recipients, who benefit from CMV-negative donors to reduce non-relapse mortality. However, the overall impact on survival has decreased due to improved antiviral prophylaxis, making this criterion secondary to HLA and donor age. &
-\cite{kollman_effect_2016,jimenez_jimenez_allogeneic_2025, ljungman_guidelines_2019} \\
-\hline
-4 & ABO Compatibility & Moderate & 
-The impact on overall survival is modest or not statistically significant in recent cohorts. Its relevance is mainly operational, reducing hemolysis risk and transfusion requirements. It becomes more important when bone marrow is the graft source, where major ABO mismatches may reduce usable cell yield during processing. &
+
+3 & CMV Serostatus & High &
+\cite{kollman_effect_2016,jimenez_jimenez_allogeneic_2025,ljungman_guidelines_2019} \\
+
+4 & ABO Compatibility & Moderate &
 \cite{jimenez_jimenez_allogeneic_2025} \\
-\hline
-5 & Donor--Recipient Sex Match & Low & 
-Female-to-male transplants are associated with increased GVHD risk due to anti-HY alloreactivity and delayed neutrophil recovery. Current guidelines consider this a minor criterion, mainly useful for tie-breaking between otherwise equivalent donors. &
+
+5 & Donor--Recipient Sex Match & Low &
 \cite{jimenez_jimenez_allogeneic_2025,gratwohl_gender_2016} \\
-\hline
-6 & Probability of success (Predicted survival time) & Lowest & 
-Sources acknowledge that mortality prediction and performance prognosis
-are tools used and advocated for the optimal selection
-of donors. &
-\cite{ratul_survival_2022, islam_rifat_children_2023} \\
+
+6 & Probability of success & Lowest &
+\cite{ratul_survival_2022,islam_rifat_children_2023} \\
 \hline
 \end{tabularx}
-\end{table*}
+\end{table}
 
 
-
-Expected Survival Time (in days) is estimated using a machine learning regression model trained and validated on a publicly available dataset of pediatric unrelated-donor bone marrow transplantations, containing 187 children and adolescents between the 2000 and 2008~\cite{Sikora2010}, derived from a published pediatric unrelated-donor cohort~\cite{Kalwak2010}. The variables of this dataset are described in table \ref{tab:all_attributes}. One of the predictive variables used in this regression model is the Expected Probability of Survival, which represents a prediction of post-transplant survival within a follow-up window of three to eight years after transplantation. This survival probability is predicted using a separate regression machine learning model.
+Expected Survival Time (in days) is estimated using a machine learning regression model trained and validated on a publicly available dataset of pediatric unrelated-donor bone marrow transplantations, containing 187 children and adolescents between the 2000 and 2008~\cite{Sikora2010}, derived from a published pediatric unrelated-donor cohort~\cite{Kalwak2010}. The variables of this dataset are described in table \ref{tab:all_attributes}. One of the predictive features used in this regression model is the Expected Probability of Survival, which represents a prediction of post-transplant survival within a follow-up window of three to eight years after transplantation. This survival probability is predicted using a separate regression machine learning model.
 At the end of the pipeline, the system outputs an ordered ranking of donor–recipient pairs together with the estimated expected survival time. These results are presented to the clinician as decision support, enabling informed, transparent, and reproducible donor selection.
 
 \subsection{Data Cleaning}
@@ -257,7 +251,7 @@ survival\_status & If the recipient is dead or alive \\\\
 \end{tabularx}
 \end{table}
 
-Several data quality issues were identified and addressed prior to model development. Missing \texttt{recipient\_body\_mass} values were imputed using recipient age bins, separated by sex, since they are strongly correlated (aprox. 0.89) and can provide more accurate values than simple imputing methods. A simple linear regression model was used to impute missing \texttt{CD3\_x1e8\_per\_kg} values using \texttt{CD34\_x1e6\_per\_kg} and \texttt{recipient\_body\_mass}, also due to their strong correlation and linear nature. Analize the usefulness in outcome of some abstracted attributes like \texttt{donor\_age\_below\_35}, \texttt{recipient\_age\_below\_10}, \texttt{HLA\_mismatch}. Encode various categorical values with one-hot encoding since there is a small range of categorical values. Creation of synthetic data attributes for tissue type and donor gender to make possible HLA and gender match calculation during multi-criteria decision making. Check and handle bias and minority classes in outcome target variables using stratification and oversampling. Handle highly correlated features by removing the less performing ones, simplifying the generalization with few data rows.
+Several data quality issues were identified and addressed prior to model development. Missing \texttt{recipient\_body\_mass} values were imputed using recipient age bins, separated by sex, since they are strongly correlated (aprox. 0.89) and can provide more accurate values than simple imputing methods. A simple linear regression model was used to impute missing \texttt{CD3\_x1e8\_per\_kg} values using \texttt{CD34\_x1e6\_per\_kg} and \texttt{recipient\_body\_mass}, also due to their strong correlation and linear nature. Analize the usefulness in outcome of some abstracted attributes like \texttt{donor\_age\_below\_35}, \texttt{recipient\_age\_below\_10}, \texttt{HLA\_mismatch}. Encode various categorical values with one-hot encoding since there is a small range of categorical values. Creation of synthetic data attributes for tissue type and donor gender to make possible HLA and gender match calculation during multi-criteria decision making. Check and handle bias and minority classes in outcome features using stratification and oversampling. Handle highly correlated features by removing the less performing ones, simplifying the generalization with few data rows.
 
 \begin{figure}[htbp]
     \centering
@@ -283,25 +277,25 @@ One of the first steps in data exploration is to analyze if the target data is b
 
 This graph shows that a lot of transplants are made with donor-recipient pairs where the donor is between the ages of 25--45 years old and the recipient between 5--15 years old. Another thing to explore could be the correlation between the age gap of the pair. However, analysis suggests that the donor-recipient age gap doesn't have a strong enough correlation with either survival time or survival status of the recipient. Another attribute worth exploring is how blood type compatibility affects survival. Exploratory analysis showed that, while in case there is a blood type match the rate of survival is very close to 50\%, in case of a blood type mismatch the rate of survival drops to close to 40\%, showing a possible small correlation between these attributes. Gender matching can also be an important factor to consider in compatibility; however, analysis shows that gender matching alone isn't sufficient to form a correlation.
 
-In addition to this, it can also be noted a very big imbalance in the target \texttt{relapse}, where 85\% of samples are negative.
-
 \subsection{Feature Engineering}
 By default, the dataset already comes with various abstracted features. A small number were added or altered. Some of the new engineered features include the addition of the \texttt{age\_gap} feature, which is calculated using the absolute difference between the recipient-donor pair; the binning of the \texttt{donor\_age} and \texttt{recipient\_age} features; and the \texttt{total\_mismatches} feature, which is calculated using the total number of mismatched allels and antigens between donor and recipient.
 
 Careful selection was important in order to reduce the high dimensionality of the data and help the models generalize better as well as reduce overfitting.
 \subsection{Oversampling}
-Regarding oversampling, two main types were tested in this project:
-\subsubsection{Synthetic Minority Over-sampling Technique (SMOTE)}
- SMOTE is used in unbalanced datasets to create more samples of the minority class using a k-nearest neighbours algorithm \cite{Chawla_2002}. This way, new samples are not equal to existing ones, but slightly different variations of existing minority class samples. In this case, slight variations of SMOTE were used such as SMOTE-NC (for nominal and countinous data) and Adaptive Synthetic Sampling (ADASYN).
+\subsubsection{SMOTE}
+Regarding oversampling, two types were tested in this project. One of them is Synthetic Minority Over-sampling Technique (SMOTE) \cite{Chawla_2002}. SMOTE is used in unbalanced datasets to create more samples of the minority class using a k-nearest neighbours algorithm. This way, new samples are not equal to existing ones, but slightly different variations of existing minority class samples. In this case, slight variations of SMOTE were used such as SMOTE-NC (for nominal and countinous data) and Adaptive Synthetic Sampling (ADASYN).
 
-\subsubsection{Generative Adversarial Networks (GANs)}
-GANs utilize neural networks to learn and generate synthetic data, which makes them a more robust and powerful alternative to other techniques \cite{gans}.
+\subsubsection{GANs}
+Generative Adversarial Networks (GANs) utilize neural networks to learn and generate synthetic data, which makes them a more robust and powerful alternative to other techniques \cite{gans}.
 
+
+\section{Experiments}
+Approximately 150 experiments with different models and model configurations were made. To facilitate this, MLflow and Hydra were used for tracking and result reproducibility across model configurations.\cite{Zaharia2018MLflow} \cite{Yadan2019Hydra}
 
 \section{System Architecture}
-For this project, the system architecture is composed of two modules that work together to achieve the desired functionality. These two modules are:
+For this experiment, the system architecture is composed woth two modules that work together to achieve the desired functionality. These two modules are:
 \begin{itemize}
-    \item A prediction system with a api that exposes endpoints for predicting survival classification, survival time regression and relapse with BentoML \cite{Yang2024BentoML}. The prediction models with the best scores were trained and imported from MLflow \cite{Zaharia2018MLflow}.
+    \item A prediction sytem with a api that exposes endpoints for predicting survival classification, survival time regression and relapse with BentoML. The prediction models with the best scores were trainned and imported from MLflow.
     \item A simple flask api that serves a web application for user interaction and calls the BentoML prediction system api for predictions.
 \end{itemize}
 \begin{figure}[htbp]
@@ -312,22 +306,16 @@ For this project, the system architecture is composed of two modules that work t
 \end{figure}
 
 
-\section{Experiments}
-Approximately 150 experiments with different models and model configurations were made. To facilitate this, MLflow and Hydra were used for tracking and result reproducibility across model configurations. \cite{Yadan2019Hydra}
-
-
 \subsection{Survival Classification}
 For survival classification, several model families were tested. All models were tested in three different configurations: default parameters, tuned and tuned with SMOTE. Every tuned model was also tested with different feature engineering steps. Additionally, the best models were also tested using GANs with different combinations of epochs and synthetic sample sizes. Different number of training cross validation folds and train-test splits were also considered. Finally, different methods of hyperparameter optimization (Grid Search, Random Search and Optuna) were explored and compared. \cite{optuna_2019} 
 
-As metrics, the F1-score on the test set was the main metric used for final model comparison but several other metrics were also used such as the accuracy, precision, recall and cross-validation F1-score of the train set.
+As metrics, the F1-score on the test set was the main metric used for comparison but several other metrics were also used such as the accuracy, precision, recall and cross-validation F1-score of the train set.
 
 Linear classification models, including the Logistic Regression were evaluated as a baseline. Tree ensemble models like the Random Forest (RF) and the Extra Trees (ET), and gradient boosting models like the XGBoost (XGB) and the LightGBM (LGBM) were also tested. Alternating Decision Trees (ADTrees) and Support Vector Machines (SVMs) were also considered.
 
-Some additional experiments were made on the best-performing models comparing different values for number of cross validation folds and train/test split ratios. It was observed that training the model with 5 folds and a test set size of 15\% of the total dataset yielded better results.
-
 \subsection{Survival Time Regression}
 
-To predict survival time, tests were performed on largely the same model families as the classification task. For the linear models family, ridge regression and elastic-net were tested. All models were tested with and without the addition of the classification variable predicted by the classification model, tuned and untuned. Additionally, the classification variable was tested being predicted as a binary variable or as a probability. Metrics such as the Root Mean Squared Error (RMSE), Mean Average Error (MAE) and the coefficient of determination ($R^2$), were saved for both train and test sets and used to compare the regression models. A baseline RMSE value was also set (RMSE = 913), which represents a simple model in which every patient is given the average survival time of the dataset.
+To predict survival time tests were performed on largely the same model families as the step above. For the linear models family, ridge regression and elastic-net were tested. All models were tested with and without the addition of the classification variable predicted by the best classification model, tuned and untuned. Additionally, the classification variable was tested being predicted as a binary variable or as a probability. Metrics such as the Root Mean Squared Error (RMSE), Mean Average Error (MAE) and the coefficient of determination ($R^2$), were saved for both train and test sets and used to compare the regression models. A baseline RMSE value was also set (RMSE = 913), which would represent a simple model in which every patient is given the average survival time.
 
 \subsection{Relapse Classification}
 
@@ -340,7 +328,7 @@ The section evaluates the performance of different ML models for the prediction 
 
 \subsection{Survival Classification}
 
-Out of all the experiments, the tuned XGBoost with GAN-augmented data obtained the best result, with an F1-score of 0.68 on the test set, a precision of 0.58, a recall of 0.63 and an accuracy of 0.64. However, the model that, on average, achieved the best results was the Logistic Regression, having the base untuned model ranked as the best model not utilizing GANs.
+Out of all the experiments, the tuned XGBoost with GAN-augmented data obtained the best result, with an F1-score of 0.65 on the test set, a precision of 0.57, a recall of 0.61 and an accuracy of 0.62. However, the model that, on average, achieved the best results was the Logistic Regression, having the base untuned model ranked as the best model not utilizing GANs.
 
 Bayesian hyperparameter tuning using Optuna did not consistently outperform grid search or random search in test performance. However, it reached very similar results significantly faster and sometimes even outperforming other methods.
 
@@ -357,9 +345,11 @@ On average, the tuned models without oversampling had better overall performance
 
 This is possibly due to the small dataset size which causes many of the more complex models, even on default parameters, to overfit the training data, causing poor performance on the test set. Due to this, simpler models are often able to create a better generalization.
 
-GAN-augmentation had a significant impact in model performance for tree models, while negatively affecting linear models. Gradient boosting models also were positively affected. Several GAN configurations were attempted and it was observed that the one that produced the best overall results was a sample size of 10 synthetic entries for class 0, 20 synthetic entries for class 1 and the the number of epochs set to 300.
+GAN-augmentation had a significant impact in model performance for tree models, while negatively affecting linear models. Gradient boosting models also were positively affected. Several GAN configuration were attempted and it was observed that the one that produced the best results overall was a sample size of 10 synthetic entries for class 0, 20 synthetic entries for class 1 and the the number of epochs set to 300.
 
-Another observation made was when comparing the cross-validation F1-Score on the train set with the test set. As can be seen in the sample of parallel coordinates plot in Fig.\ref{fig:train_vs_test}, 12 random experiments were chosen, and compared. It was observed that experiments that scored a high F1-score on cross-validation with the train set (middle column), performed consistently worse on the test set (right column) than those that scored a lower value.
+This observation is consistent with the previous hypothesis. With more data, tree models don't overfit the training set as much, and get better results. However, it is important to note that data quality also plays a big role, because simply generating more data using GANs doesn't always yield better results. With little data, GANs can also overfit the train set and generate synthetic data that is too close to the real set which only adds noise. On the other hand, reducing the number of epochs too much can also cause them to not learn enough about the data. 
+
+Another observation made was when comparing the cross-validation F1-Score on the train set with the test set. As can be seen in the sample of parallel coordinates plot in Fig.\ref{fig:train_vs_test}, 12 random experiments were chosen, and compared. It was observed that experiments that scored a high F1-score on cross-validation with the train set performed consistently worse on the test set than those that scored a lower value.
 
 \begin{figure}[htbp]
     \centering
@@ -369,11 +359,11 @@ Another observation made was when comparing the cross-validation F1-Score on the
 \end{figure}
 \FloatBarrier
 
-These observations are consistent with the previous hypothesis. With more data, tree models don't overfit the training set as much, and get better results. However, it is important to note that data quality also plays a big role, because simply generating more data using GANs doesn't always yield better results. With little data, GANs can also overfit the train set and generate synthetic data that is too close to the real set which only adds noise. On the other hand, reducing the number of epochs too much can also cause them to not learn enough about the data. 
+Some additional experiments were made on the best-performing models comparing different values for number of cross validation folds and train/test split ratios. It was observed that training the model with 5 folds and a test set size of 15\% of the total dataset yielded better results.
 
 \subsection{Survival Time Regression}
 
-As can be seen in Fig. \ref{fig:use_clf}, using classification prediction as a feature to predict regression considerably improved model performance.
+As can be seen in Fig. \ref{fig:use_clf}, using classification as a feature to predict regression considerably improved model performance.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.8\columnwidth]{figures/classification_influence.png}
@@ -397,10 +387,10 @@ Finally, for relapse prediction, due to the big similarity of the dataset to the
 To improve model explainability, a general SHapley Additive exPlanation (SHAP) analysis was performed and plotted for the best-performing classification and regression model~\cite{Lundberg2017SHAP}.
 Each dot represents a single data point of the respective feature.
 The x-axis represents the SHAP value, which is a measure of the impact of each feature on the model's prediction (a negative shap means the model is more likely to predict the patient's survival, while a positive value means the opposite). The color of each dot represents the value of the feature for that data point.
-A red dot represents a high value and a blue dot represents a low value.
-For example, in the feature \texttt{age\_gap}, a red dot represents a high age gap value and a blue dot represents a low age gap value.
-The ordering of the dots along the y-axis does not affect interpretability and is used only to improve visualization.
-It should be noted that SHAP analysis was performed strictly post-hoc and was not used to guide feature engineering decisions.
+A red feature represents a high value and a blue feature represents a low value.
+For example, in the feature \texttt{age\_gap}, a red dot represents a high age gap and a blue dot represents a low age gap.
+The ordering along the y-axis does not affect interpretability and is used only to improve visualization.
+It should be noted that SHAP analysis was performed strictly post hoc and was not used to guide feature engineering decisions.
 Fig.\ref{fig:clf_shap} shows a beeswarm plot of the most important features for the classification model.
 \begin{figure}[htbp]
     \centering
@@ -417,20 +407,26 @@ Fig.\ref{fig:reg_shap} shows a beeswarm plot of the top 3 features for the regre
     \label{fig:reg_shap}
 \end{figure}
 
-Some features are very strong and clean indicators of the model's prediction. For example, the feature \texttt{risk\_group\_low} being positive is a big indicator that the model will predict the patients survival. To add to this, it can be observed that most binary features form separated clusters, indicating a consistent directional impact on the model's prediction depending on feature value. However, that's not always the case, as can be seen in the feature \texttt{ABO\_match\_mismatched} or \texttt{donor\_CMV\_present}. It can also be observed that the engineered features \texttt{age\_gap} and \texttt{recipient\_age\_bin} had a strong impact on the model's prediction. 
+Some features are very strong and clean indicators of the model's prediction. For example, the feature \texttt{risk\_group\_low} being positive is a big indicator that the model will predict the patients survival. To add to this, we can observe that most binary features form separated clusters, indicating a consistent directional impact on the model's prediction depending on feature value. However, that's not always the case, as we can see in the feature \texttt{ABO\_match\_mismatched} or \texttt{donor\_CMV\_present}. We can also observe that the engineered features \texttt{age\_gap} and \texttt{recipient\_age\_bin} had a strong impact on the model's prediction. 
 
-Furthermore, it can clearly be seen that the survival status of the patient is a strong indicator of the model's prediction for the regression model.
+Furthermore, we can clearly see the importance of predicting the survival status of the patient as a feature for the regression model.
 
 \section{Conclusion}
 \subsection{Main findings}
-The results indicate that simpler models, particularly logistic regression, exhibit strong generalization performance in small datasets, while more complex models are more prone to overfitting. Although GAN-based data augmentation improved the performance of tree-based and gradient boosting models, its performance was highly dependent on data quality. Incorporating survival classification outputs as features for survival time regression significantly reduced prediction error. Furthermore, the survival time prediction succeeded in yielding significantly better results than baseline levels.
+The results indicate that simpler models, particularly logistic regression, exhibit strong generalization performance in small clinical datasets, while more complex models are prone to overfitting. Although GAN-based data augmentation improved the performance of tree-based and gradient boosting models, its performance was highly dependent on data quality. Furthermore, incorporating survival classification outputs as features for survival time regression significantly reduced prediction error, demonstrating the benefit of multi-stage modeling strategies.
+Beyond predictive performance, this work demonstrates the feasibility of integrating ML models into a structured multi-criteria decision-support pipeline for donor allocation. By explicitly separating outcome prediction (ML), preference elicitation (AHP), and alternative ranking (TOPSIS), the proposed framework supports transparent, reproducible, and auditable clinical decision-making. The resulting ranked donor–recipient lists provide clinicians with interpretable recommendations that combine data-driven predictions with established clinical priorities, thereby facilitating informed and accountable allocation decisions.
+
 
 \subsection{Limitations}
 \subsubsection{Small Dataset}
 The biggest limitation of this project was the limited dataset size. A size of around 180 total samples, means there are not enough samples for the model to create a good generalization and the test is too small to have a clear idea of how the model would preform with new data. 
 
 \subsubsection{Class imbalance}
-Additionally the dataset shows a small class imbalance for the \texttt{survival\_status} variable which was able to be remedied utilizing oversampling techniques. However, there is a much more significant imbalance for the variable \texttt{relapse}.
+Additionally the dataset shows a small class imbalance for the \texttt{survival\_status} feature which was able to be remedied utilizing oversampling techniques. However, there is a much more significant unbalance for the feature \texttt{relapse}.
+
+\subsubsection{Decision-Level Validation}
+While the predictive models were evaluated quantitatively, the decision-support component has not yet been prospectively validated in real clinical workflows. Future work should include clinician-in-the-loop evaluations to assess usability, interpretability, and real-world impact on donor selection decisions.
+
 
 \section*{Acknowledgment}
 The authors thank the lecturers of the Master in Artificial Intelligence Engineering (MEIA) at the Porto School of Engineering (ISEP) for the guidance and support provided throughout the development of this project.
