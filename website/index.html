@@ -1,703 +1,957 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Layout Tipo Sistema</title>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Layout Tipo Sistema</title>
-
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <style>
-    body {
-      background: #e6e6e6;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-family: system-ui, sans-serif
-    }
-
-    .frame {
-      background: #f5f5f5;
-      border-radius: 16px;
-      padding: 16px;
-      width: 100%;
-      max-width: 1200px;
-      height: 650px;
-      box-shadow: 0 20px 40px rgb(0 0 0 / .2)
-    }
-
-    .layout {
-      display: grid;
-      grid-template-columns: 320px 1fr;
-      gap: 16px;
-      height: 100%
-    }
-
-    .panel {
-      background: #bfbfbf;
-      border-radius: 12px;
-      position: relative;
-      padding: 12px
-    }
-
-    .panel.small {
-      height: 100%
-    }
-
-    .panel.large {
-      height: 100%
-    }
-
-    .label {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: #333
-    }
-
-    .scroll-bar {
-      position: absolute;
-      top: 16px;
-      right: 8px;
-      width: 10px;
-      height: calc(100% - 32px);
-      background: #9a9a9a;
-      border-radius: 6px
-    }
-
-    .scroll-thumb {
-      width: 100%;
-      height: 80px;
-      background: #7CFF8A;
-      border-radius: 6px;
-      margin-top: 40px
-    }
-
-    .bottom-left {
-      display: grid;
-      grid-template-columns: 70px 1fr;
-      gap: 12px;
-      margin-top: 12px
-    }
-
-    .pill {
-      background: #7CFF8A;
-      border-radius: 24px;
-      height: 44px;
-      padding: 0 18px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      color: #1f1f1f;
-      font-size: 1rem;
-      cursor: pointer
-    }
-
-    .pill.outline {
-      background: #7CFF8A;
-      border: none
-    }
-
-    .action {
-      position: absolute;
-      bottom: 16px;
-      right: 16px;
-      min-width: 120px;
-      height: 44px;
-      background: #7CFF8A;
-      border-radius: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      font-size: 1rem;
-      cursor: pointer
-    }
-
-    .donor-card {
-      cursor: pointer;
-      transition: all 0.3s ease;
-      border: 1px solid #dee2e6
-    }
-
-    .donor-card.selected {
-      border-color: #28a745 !important;
-      border-width: 2px !important;
-      background-color: #f8fff9;
-      box-shadow: 0 4px 8px rgb(40 167 69 / .2) !important
-    }
-
-    #waitingListContainer {
-      max-height: 500px;
-      overflow-y: auto;
-      padding-right: 10px
-    }
-
-    #waitingListContainer::-webkit-scrollbar {
-      width: 6px
-    }
-
-    #waitingListContainer::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 10px
-    }
-
-    #waitingListContainer::-webkit-scrollbar-thumb {
-      background: #7CFF8A;
-      border-radius: 10px
-    }
-
-    #waitingListContainer::-webkit-scrollbar-thumb:hover {
-      background: #5cff76
-    }
-
-    #resultChecklistContainer {
-      max-height: 550px;
-      overflow-y: auto;
-      padding-right: 10px
-    }
-
-    #resultChecklistContainer::-webkit-scrollbar {
-      width: 6px
-    }
-
-    #resultChecklistContainer::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 10px
-    }
-
-    #resultChecklistContainer::-webkit-scrollbar-thumb {
-      background: #7CFF8A;
-      border-radius: 10px
-    }
-
-    #resultChecklistContainer::-webkit-scrollbar-thumb:hover {
-      background: #5cff76
-    }
-
-    #segundo #waitingListContainer {
-      max-height: 310px;
-      overflow-y: auto;
-      overflow-x: hidden;
-      padding-right: 8px;
-      display: block
-    }
-
-    #segundo #waitingListContainer::-webkit-scrollbar {
-      width: 6px
-    }
-
-    #segundo #waitingListContainer::-webkit-scrollbar-track {
-      background: #f1f1f1;
-      border-radius: 10px
-    }
-
-    #segundo #waitingListContainer::-webkit-scrollbar-thumb {
-      background: #7CFF8A;
-      border-radius: 10px
-    }
-  </style>
-</head>
-
-<body>
-  <div class="container">
-    <div class="row">
-      <div class="col-md-1">
-        <button class="pill border-0" style="min-width:100px;" onclick=Mostra(1)>Alocation</button>
-
-      </div>
-      <div class="col-md-1">
-        <button class="pill border-0" style="min-width:100px;" onclick=Mostra(2)>Transplantation</button>
-
-      </div>
-      <div clas="col-md-10"></div>
-    </div>
-    <div class="row">&nbsp</div>
-    <div class="row">
-      <div class="frame" id="primeiro">
-        <div class="layout">
-
-          <!-- Coluna esquerda -->
-          <div class="d-flex flex-column">
-            <div class="panel small flex-grow-1 d-flex flex-column">
-              <div class="fw-semibold mb-2">Waiting List</div>
-              <div class="flex-grow-1" id="waitingListContainer" style="overflow-y:auto; padding-right:18px;"></div>
-            </div>
-
-            <div class="bottom-left">
-              <div class="form-check form-switch m-0">
-                <input class="form-check-input" id="mainSwitch" type="checkbox" role="switch" style="
-            width:4.2em;
-            height:2.1em;
-            background-color:#5cff76;
-            border-color:#5cff76;
-            ">
-              </div>
-              <button class="pill border-0" id="submitBtn" style="min-width:140px;">Search</button>
-            </div>
-          </div>
-
-          <!-- Painel direito -->
-          <div class="panel large">
-            <div id="resultChecklistContainer" class="flex-grow-1" style="overflow-y:auto; padding-right:18px;">
-            </div>
-            <button class="action border-0" id="conftranspair">Confirm</button>
-          </div>
-
-        </div>
-      </div>
-      <div class="frame" id="segundo" style="display: none;">
-        <!--segunda pagina-->
-        <div class="layout">
-
-          <!-- Coluna esquerda -->
-          <div class="d-flex flex-column">
-            <div class="panel small flex-grow-1 d-flex flex-column">
-              <div class="fw-semibold mb-2">Transplantpair</div>
-              <div class="flex-grow-1" id="waitingListContainer" style="overflow-y:auto; padding-right:18px;"></div>
-            </div>
-            <div id="inputs" class="p-3 mt-3" style="background:#bfbfbf; border-radius:12px;">
-
-              <!-- Linha 1: select -->
-              <div class="mb-2">
-                <label for="sourceSelect" class="form-label fw-semibold">Source</label>
-                <select id="sourceSelect" class="form-select"
-                  style="background:#bfbfbf; color:#1f1f1f; border:1px solid #888; border-radius:6px;">
-                  <option value="bonemarrow">Bonemarrow</option>
-                  <option value="peripheral">Peripheral Blood</option>
-                </select>
-              </div>
-
-              <!-- Linha 2: inputs decimais lado a lado -->
-              <div class="d-flex gap-2">
-                <div class="flex-fill">
-                  <label for="decimal1" class="form-label fw-semibold"
-                    style="font-size: 0.75rem;">CD34_x1e6_per_kg</label>
-                  <input type="number" step="0.01" id="decimal1" class="form-control"
-                    style="background:#bfbfbf; border:1px solid #888; border-radius:6px; color:#1f1f1f;">
-                </div>
-                <div class="flex-fill">
-                  <label for="decimal2" class="form-label fw-semibold"
-                    style="font-size: 0.75rem;">CD3_x1e8_per_kg</label>
-                  <input type="number" step="0.01" id="decimal2" class="form-control"
-                    style="background:#bfbfbf; border:1px solid #888; border-radius:6px; color:#1f1f1f;">
-                </div>
-              </div>
-            </div>
-            <div class="bottom-left">
-              <button class="pill border-0" id="submitBtn2" style="min-width:140px;">Search</button>
-            </div>
-          </div>
-          <!-- Painel direito -->
-          <div class="panel large">
-            <div id="resultChecklistContainer" class="flex-grow-1" style="overflow-y:auto; padding-right:18px;">
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="row">&nbsp</div>
-    <div class="row">
-      <div class="col-md-9"></div>
-      <div class="col-md-2">
-        <img src="image/logo.svg" alt="Logo" class="img-fluid">
-      </div>
-      <div class="col-md-1"></div>
-    </div>
-    <div class="modal fade" id="successModal" tabindex="-1">
-      <div class="modal-dialog modal-sm modal-dialog-centered">
-        <div class="modal-content text-center p-4">
-          <div class="display-1 text-success mb-3">
-            <i class="bi bi-check-circle-fill"></i>
-          </div>
-          <h4>Confirmado!</h4>
-          <p>O par de transplante foi criado.</p>
-          <button type="button" class="btn btn-success w-100" data-bs-dismiss="modal">Fechar</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <script>
-    function Mostra(id) {
-      const primeiro = document.getElementById('primeiro');
-      const segundo = document.getElementById('segundo');
-      document.querySelectorAll('#waitingListContainer').forEach(container => { container.innerHTML = ''; });
-      const decimal1 = document.getElementById('decimal1');
-      const decimal2 = document.getElementById('decimal2');
-      if (decimal1) decimal1.value = '';
-      if (decimal2) decimal2.value = '';
-      if (id === 1) {
-        primeiro.style.display = 'block';
-        segundo.style.display = 'none';
-        loadWaitingList()
-      } else if (id === 2) {
-        document.querySelectorAll('#resultChecklistContainer').forEach(container => { container.innerHTML = ''; });
-        primeiro.style.display = 'none';
-        segundo.style.display = 'block';
-        loadAllTransplantPairs();
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+      body {
+        background: #e4e6e5;
+        padding-block: 20px;
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        font-family: system-ui, sans-serif;
       }
-      document.querySelectorAll('.panel.large').forEach(p => p.style.backgroundColor = '#bfbfbf');
-    }
-    document.addEventListener('DOMContentLoaded', function () {
-      const sw = document.getElementById('mainSwitch');
-      const btn = document.getElementById('submitBtn');
-      function atualizarTexto() {
-        if (sw.checked) {
-          btn.innerText = 'Search - Peripheral Blood';
-        } else {
-          btn.innerText = 'Search - Bonemarrow';
+
+      #mainSwitch {
+        background-color: #edf1f0;
+      }
+
+      .outside-container {
+        border-radius: 50px;
+        padding: 15px;
+        background: #edf1f0;
+        box-shadow: 0 0 10px rgb(0 0 0 / 0.02);
+      }
+
+      .frame {
+        background: #f1f7f5;
+        border-radius: 40px;
+        padding: 20px;
+        width: 100%;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+        height: 100%;
+      }
+
+      .badge {
+        background-color: #0d9667;
+      }
+
+      .button-secondary,
+      .button-primary {
+        background: #0d9667;
+        border-width: 0;
+        border-radius: 16px;
+        height: 44px;
+        padding: 0 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 400;
+        color: #ffffff;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+
+      .button-secondary {
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        color: black;
+        font-weight: 400;
+      }
+
+      .button-select-secondary,
+      .button-select-primary {
+        background: #e1f5ee;
+        border: 1px solid #0d9667;
+        border-radius: 16px;
+        height: 44px;
+        padding: 0 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 400;
+        color: #0d9667;
+        font-size: 1rem;
+        cursor: pointer;
+        font-weight: 500;
+      }
+
+      .button-select-secondary {
+        background: #ffffff;
+        border: 1px solid #dee2e6;
+        color: black;
+        font-weight: 400;
+      }
+
+      .action {
+        background: #0d9667;
+        border-width: 0;
+        border-radius: 16px;
+        height: 44px;
+        padding: 0 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 400;
+        color: #ffffff;
+        font-size: 1rem;
+        cursor: pointer;
+
+        position: absolute;
+        bottom: 16px;
+        right: 16px;
+        min-width: 120px;
+        height: 44px;
+      }
+
+      .panel {
+        background: #ffffff;
+        border-radius: 20px;
+        border: 1px solid gainsboro;
+        position: relative;
+        padding: 20px;
+      }
+
+      .panel.small {
+        height: 100%;
+      }
+
+      .panel.large {
+        height: 100%;
+      }
+
+      .label {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .scroll-bar {
+        position: absolute;
+        top: 16px;
+        right: 8px;
+        width: 10px;
+        height: calc(100% - 32px);
+        background: #9a9a9a;
+        border-radius: 6px;
+      }
+
+      .scroll-thumb {
+        width: 100%;
+        height: 80px;
+        background: #0d9667;
+        border-radius: 6px;
+        margin-top: 40px;
+      }
+
+      .bottom-left {
+        display: grid;
+        display: flex;
+        flex-direction: row;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .donor-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 1px solid #dee2e6;
+      }
+
+      .donor-card.selected {
+        border: 1px solid #e1f5ee;
+        background-color: #e1f5ee;
+      }
+
+      #waitingListContainer {
+        max-height: 500px;
+        overflow-y: auto;
+        padding-right: 10px;
+      }
+
+      #resultChecklistContainer::-webkit-scrollbar,
+      #waitingListContainer::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      #resultChecklistContainer::-webkit-scrollbar-track,
+      #waitingListContainer::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+      }
+
+      #resultChecklistContainer::-webkit-scrollbar-thumb,
+      #waitingListContainer::-webkit-scrollbar-thumb {
+        background: #919191;
+        border-radius: 10px;
+      }
+
+      #resultChecklistContainer::-webkit-scrollbar-thumb:hover,
+      #waitingListContainer::-webkit-scrollbar-thumb:hover {
+        background: #919191;
+      }
+
+      #resultChecklistContainer {
+        max-height: 550px;
+        overflow-y: auto;
+        padding-right: 10px;
+      }
+
+      #segundo #waitingListContainer {
+        max-height: 310px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-right: 8px;
+        display: block;
+      }
+
+      #segundo #waitingListContainer::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      #segundo #waitingListContainer::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+      }
+
+      #segundo #waitingListContainer::-webkit-scrollbar-thumb {
+        background: #0d9667;
+        border-radius: 10px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="d-flex gap-3">
+        <button
+          id="btnAlocation"
+          class="button-select-primary"
+          style="min-width: 100px"
+          onclick="Mostra(1)"
+        >
+          Alocation
+        </button>
+
+        <button
+          id="btnTransplantation"
+          class="button-select-secondary"
+          style="min-width: 100px"
+          onclick="Mostra(2)"
+        >
+          Transplantation
+        </button>
+      </div>
+
+      <div class="row">&nbsp</div>
+      <div class="row">
+        <div class="outside-container container">
+          <div class="frame" id="primeiro">
+            <div class="layout">
+              <!-- Coluna esquerda -->
+              <div class="d-flex flex-column">
+                <div class="panel small flex-grow-1 d-flex flex-column">
+                  <h5 class="mb-3">Recipients Waiting Transplant</h5>
+                  <div
+                    class="flex-grow-1"
+                    id="waitingListContainer"
+                    style="overflow-y: auto; padding-right: 18px"
+                  ></div>
+                </div>
+
+                <div class="bottom-left">
+                  <div class="form-check form-switch m-0">
+                    <input
+                      class="form-check-input"
+                      id="mainSwitch"
+                      type="checkbox"
+                      role="switch"
+                      style="width: 4.2em; height: 2.1em"
+                    />
+                  </div>
+                  <button
+                    class="button-primary"
+                    id="submitBtn"
+                    style="min-width: 140px"
+                  >
+                    Search
+                  </button>
+                </div>
+              </div>
+
+              <!-- Painel direito -->
+              <div class="d-flex flex-column">
+                <div class="panel large">
+                  <h5 class="mb-3">Matching Donors</h5>
+                  <div
+                    id="resultChecklistContainer"
+                    style="overflow-y: auto; padding-right: 18px"
+                  ></div>
+                </div>
+                <button
+                  class="button-primary"
+                  style="margin-top: 12px; align-self: flex-end"
+                  id="conftranspair"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="frame" id="segundo" style="display: none">
+            <!--segunda pagina-->
+            <div class="layout">
+              <!-- Coluna esquerda -->
+              <div class="d-flex flex-column">
+                <div class="panel small flex-grow-1 d-flex flex-column">
+                  <h5 class="mb-3">Pairs Waiting Transplant</h5>
+                  <div
+                    class="flex-grow-1"
+                    id="waitingListContainer"
+                    style="overflow-y: auto; padding-right: 18px"
+                  ></div>
+                </div>
+                <div
+                  id="inputs"
+                  class="p-3 mt-3"
+                  style="background: #ffffff; border-radius: 12px"
+                >
+                  <!-- Linha 1: select -->
+                  <div class="mb-2">
+                    <label for="sourceSelect" class="form-label fw-semibold"
+                      >Source</label
+                    >
+                    <select
+                      id="sourceSelect"
+                      class="form-select"
+                      style="
+                        color: #1f1f1f;
+                        border: 1px solid #888;
+                        border-radius: 6px;
+                      "
+                    >
+                      <option value="bonemarrow">Bone Marrow</option>
+                      <option value="peripheral">Peripheral Blood</option>
+                    </select>
+                  </div>
+
+                  <!-- Linha 2: inputs decimais lado a lado -->
+                  <div class="d-flex gap-2">
+                    <div class="flex-fill">
+                      <label
+                        for="decimal1"
+                        class="form-label fw-semibold"
+                        style="font-size: 0.75rem"
+                        >CD34 (10^6) per Kg</label
+                      >
+                      <input
+                        type="number"
+                        step="0.01"
+                        id="decimal1"
+                        class="form-control"
+                        style="
+                          border: 1px solid #888;
+                          border-radius: 6px;
+                          color: #1f1f1f;
+                        "
+                      />
+                    </div>
+                    <div class="flex-fill">
+                      <label
+                        for="decimal2"
+                        class="form-label fw-semibold"
+                        style="font-size: 0.75rem"
+                        >CD3 (10^8) per Kg</label
+                      >
+                      <input
+                        type="number"
+                        step="0.01"
+                        id="decimal2"
+                        class="form-control"
+                        style="
+                          border: 1px solid #888;
+                          border-radius: 6px;
+                          color: #1f1f1f;
+                        "
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div class="bottom-left">
+                  <button
+                    class="button-primary"
+                    id="submitBtn2"
+                    style="min-width: 140px"
+                  >
+                    Fill Information
+                  </button>
+                </div>
+              </div>
+              <!-- Painel direito -->
+              <div class="panel large">
+                <div
+                  id="resultChecklistContainer"
+                  class="flex-grow-1"
+                  style="overflow-y: auto; padding-right: 18px"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="row">&nbsp</div>
+      <div class="modal fade" id="successModal" tabindex="-1">
+        <div class="modal-dialog modal-sm modal-dialog-centered">
+          <div class="modal-content text-center p-4">
+            <div class="display-1 text-success mb-3">
+              <i class="bi bi-check-circle-fill"></i>
+            </div>
+            <h4>Confirmado!</h4>
+            <p>O par de transplante foi criado.</p>
+            <button
+              type="button"
+              class="button-primary"
+              data-bs-dismiss="modal"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function Mostra(id) {
+        const primeiro = document.getElementById("primeiro");
+        const segundo = document.getElementById("segundo");
+
+        const btnA = document.getElementById("btnAlocation");
+        const btnT = document.getElementById("btnTransplantation");
+
+        // reset lists and inputs
+        document
+          .querySelectorAll("#waitingListContainer")
+          .forEach((container) => (container.innerHTML = ""));
+
+        const decimal1 = document.getElementById("decimal1");
+        const decimal2 = document.getElementById("decimal2");
+        if (decimal1) decimal1.value = "";
+        if (decimal2) decimal2.value = "";
+
+        if (id === 1) {
+          // layout
+          primeiro.style.display = "block";
+          segundo.style.display = "none";
+          loadWaitingList();
+
+          // button styles
+          btnA.classList.replace(
+            "button-select-secondary",
+            "button-select-primary",
+          );
+          btnT.classList.replace(
+            "button-select-primary",
+            "button-select-secondary",
+          );
+        } else if (id === 2) {
+          document
+            .querySelectorAll("#resultChecklistContainer")
+            .forEach((container) => (container.innerHTML = ""));
+
+          primeiro.style.display = "none";
+          segundo.style.display = "block";
+          loadAllTransplantPairs();
+
+          // button styles
+          btnT.classList.replace(
+            "button-select-secondary",
+            "button-select-primary",
+          );
+          btnA.classList.replace(
+            "button-select-primary",
+            "button-select-secondary",
+          );
+        }
+
+        document
+          .querySelectorAll(".panel.large")
+          .forEach((p) => (p.style.backgroundColor = "#ffffff"));
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const sw = document.getElementById("mainSwitch");
+        const btn = document.getElementById("submitBtn");
+        function atualizarTexto() {
+          if (sw.checked) {
+            btn.innerText = "Search - Peripheral Blood";
+          } else {
+            btn.innerText = "Search - Bonemarrow";
+          }
+        }
+        atualizarTexto();
+        sw.addEventListener("change", atualizarTexto);
+      });
+      async function loadWaitingList() {
+        try {
+          const response = await fetch("http://localhost:5001/recipients");
+          const data = await response.json();
+
+          const container = document.getElementById("waitingListContainer");
+          if (!container) return;
+
+          container.innerHTML = "";
+
+          data.forEach((item) => {
+            const div = document.createElement("div");
+
+            div.className = "card mb-2 donor-card";
+            div.dataset.recipientId = item.recipient_id;
+            div.innerHTML = `
+              <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="m-0">${item.recipient_name}</h6>
+                    </div>
+                    <div style="font-size: 0.85em;" class="mt-1 text-muted">
+                      <span><strong>Age:</strong> ${item.recipient_age}</span> |
+                      <span><strong>Sex:</strong> ${item.recipient_gender}</span> |
+                      <span><strong>Disease:</strong> ${item.disease}</span> 
+                    </div>
+                </div>
+            `;
+
+            div.addEventListener("click", function () {
+              container
+                .querySelectorAll(".donor-card")
+                .forEach((c) => c.classList.remove("selected"));
+
+              this.classList.add("selected");
+            });
+
+            container.appendChild(div);
+          });
+        } catch (error) {
+          console.error("Erro ao carregar Waiting List:", error);
         }
       }
-      atualizarTexto();
-      sw.addEventListener('change', atualizarTexto);
-    });
-    async function loadWaitingList() {
-      try {
-        const response = await fetch('http://localhost:5001/recipients');
-        const data = await response.json();
 
-        //const data = mockData; 
-        const container = document.getElementById('waitingListContainer');
+      document.addEventListener("DOMContentLoaded", loadWaitingList);
+      document
+        .getElementById("submitBtn")
+        .addEventListener("click", async () => {
+          const isPeripheral = document.getElementById("mainSwitch").checked;
+          const selectedCard = document.querySelector(
+            "#waitingListContainer .donor-card.selected",
+          );
+
+          if (!selectedCard) {
+            alert("Selecione pelo menos um paciente da Waiting List.");
+            return;
+          }
+
+          const selectedIds = [selectedCard.dataset.recipientId];
+
+          if (selectedIds.length === 0) {
+            alert("Selecione pelo menos um paciente da Waiting List.");
+            return;
+          }
+          const source = isPeripheral ? "peripheral blood" : "bone marrow";
+          const payload = {
+            stem_cell_source: source,
+          };
+          try {
+            console.log(
+              `Buscando matches para ${selectedIds[0]} com fonte: ${source}`,
+            );
+
+            const response = await fetch(
+              `http://127.0.0.1:5001/recipient/${selectedIds[0]}/donor-matches`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              },
+            );
+
+            const result = await response.json();
+            console.log(result);
+            fillResultChecklist(result);
+          } catch (error) {
+            console.error("Erro ao processar matches:", error);
+          }
+        });
+
+      function fillResultChecklist(donors) {
+        const container = document.getElementById("resultChecklistContainer");
         if (!container) return;
 
-        container.innerHTML = '';
+        donors.forEach((donor) => {
+          const div = document.createElement("div");
 
-        data.forEach(item => {
-          const checkboxId = `waiting_${item.recipient_id}`;
-          const div = document.createElement('div');
-          div.className = 'form-check mb-2';
+          const genderMatch =
+            donor.gender_match === "other" ? "Matched" : "Mismatched";
+
+          div.className = "card mb-2 donor-card";
+          div.dataset.donorId = donor.donor_id;
           div.innerHTML = `
-                    <input class="form-check-input" type="checkbox" id="${checkboxId}" value="${item.recipient_id}">
-                    <label class="form-check-label" for="${checkboxId}">
-                      <strong>${item.recipient_name}</strong> 
-                      <small class="text-muted">(${item.recipient_age} anos - ${item.risk_group})</small>
-                    </label>
-                  `;
-          container.appendChild(div);
-        });
-
-      } catch (error) {
-        console.error('Erro ao carregar Waiting List:', error);
-      }
-    }
-    document.addEventListener('DOMContentLoaded', loadWaitingList);
-    document.getElementById('submitBtn').addEventListener('click', async () => {
-      const isPeripheral = document.getElementById('mainSwitch').checked;
-      const selectedIds = Array.from(
-        document.querySelectorAll('#waitingListContainer input[type="checkbox"]:checked')
-      ).map(cb => cb.value);
-
-      if (selectedIds.length === 0) {
-        alert('Selecione pelo menos um paciente da Waiting List.');
-        return;
-      }
-      const source = isPeripheral ? "peripheral blood" : "bone marrow";
-      const payload = {
-        "stem_cell_source": source
-      };
-      try {
-        console.log(`Buscando matches para ${selectedIds[0]} com fonte: ${source}`);
-
-        const response = await fetch(`http://127.0.0.1:5001/recipient/${selectedIds[0]}/donor-matches`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-        console.log(result)
-        fillResultChecklist(result);
-
-      } catch (error) {
-        console.error('Erro ao processar matches:', error);
-      }
-    });
-    function fillResultChecklist(donors) {
-      const container = document.getElementById('resultChecklistContainer');
-      if (!container) return;
-      //
-      container.innerHTML = '<h5 class="mb-3">Donors Found:</h5>';
-      //
-      donors.forEach(donor => {
-        const div = document.createElement('div');
-        div.className = 'card mb-2 shadow-sm border-start border-primary donor-card';
-        div.style.borderLeftWidth = '5px';
-        div.dataset.donorId = donor.donor_id;
-        div.innerHTML = `
                 <div class="card-body p-2">
                     <div class="d-flex justify-content-between align-items-center">
                         <h6 class="m-0">${donor.donor_name}</h6>
-                        <span class="badge bg-primary">Deviation: ${donor.deviation_from_ideal.toFixed(4)}</span>
+                        <span class="badge">HLA Match:</strong> ${donor.HLA_match}</span>
                     </div>
                     <div style="font-size: 0.85em;" class="mt-1 text-muted">
-                        <span><strong>ABO:</strong> ${donor.ABO_match}</span> | 
-                        <span><strong>Survival:</strong> ${donor.expected_survival_time} days</span>
+                      <span><strong>Age:</strong> ${donor.donor_age}</span> |
+                      <span><strong>CMV Serostatus:</strong> ${donor.CMV_status}</span> |
+                      <span><strong>Gender Match:</strong> ${genderMatch}</span> 
                     </div>
                 </div>
             `;
-        //
-        div.addEventListener('click', function () {
-          document.querySelectorAll('.donor-card').forEach(c => c.classList.remove('selected'));
-          this.classList.add('selected');
-          console.log("Doador selecionado:", donor.donor_id);
+          //
+          div.addEventListener("click", function () {
+            document
+              .querySelectorAll("#resultChecklistContainer .donor-card")
+              .forEach((c) => c.classList.remove("selected"));
+            this.classList.add("selected");
+            console.log("Doador selecionado:", donor.donor_id);
+          });
+          container.appendChild(div);
         });
-        container.appendChild(div);
-      });
-    }
-    //
-    document.getElementById('conftranspair').addEventListener('click', async () => {
-      /* Mostra(2);
-       newPairId = "IP009"
-       await fetchAndFillTransplantDetails(newPairId);*/
-      const selectedRecipient = document.querySelector('#waitingListContainer input[type="checkbox"]:checked');
-      const selectedDonorCard = document.querySelector('.donor-card.selected');
-
-      if (!selectedRecipient || !selectedDonorCard) {
-        alert('Por favor, selecione tanto o Paciente quanto o Doador antes de confirmar.');
-        return;
       }
-      const payload = {
-        "donor_id": selectedDonorCard.dataset.donorId,
-        "recipient_id": selectedRecipient.value
-      };
-      console.log(payload)
-      try {
-        const response = await fetch('http://localhost:5001/transplant-pairs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+      //
+      document
+        .getElementById("conftranspair")
+        .addEventListener("click", async () => {
+          const selectedRecipient = document.querySelector(
+            "#waitingListContainer .donor-card.selected",
+          );
+          const selectedDonorCard = document.querySelector(
+            "#resultChecklistContainer .donor-card.selected",
+          );
 
-        if (response.ok) {
+          if (!selectedRecipient || !selectedDonorCard) {
+            alert(
+              "Por favor, selecione tanto o Paciente quanto o Doador antes de confirmar.",
+            );
+            return;
+          }
+          const payload = {
+            donor_id: selectedDonorCard.dataset.donorId,
+            recipient_id: selectedRecipient.dataset.recipientId,
+          };
+          console.log(payload);
+          try {
+            const response = await fetch(
+              "http://localhost:5001/transplant-pairs",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+              },
+            );
+
+            if (response.ok) {
+              const result = await response.json();
+              const newPairId = result.pair_id; // Aqui pegamos o IP006
+              console.log(result);
+              Swal.fire({
+                title: "Sucesso!",
+                text: `Par ${newPairId} criado com sucesso!`,
+                icon: "success",
+                confirmButtonColor: "#28a745",
+                confirmButtonText: "Ir para Transplante",
+              }).then(async (swalResult) => {
+                if (swalResult.isConfirmed) {
+                  Mostra(2);
+                  await fetchAndFillTransplantDetails(newPairId);
+                }
+              });
+            }
+          } catch (error) {
+            console.error("Erro ao enviar POST:", error);
+            alert("Erro de conexão com o servidor.");
+          }
+        });
+      async function fetchAndFillTransplantDetails(pairId) {
+        try {
+          const response = await fetch(
+            "http://localhost:5001/transplant-pairs",
+          );
           const result = await response.json();
-          const newPairId = result.pair_id; // Aqui pegamos o IP006
-          console.log(result)
+          const withoutTransplant = JSON.parse(result.data.without_transplant);
+          const myPair = withoutTransplant.find((p) => p.pair_id === pairId);
+          const container2 = document.querySelectorAll(
+            "#waitingListContainer",
+          )[1];
+          if (!container2) return;
+          container2.innerHTML = "";
+
+          if (myPair) {
+            const div = document.createElement("div");
+            div.className = `card mb-2 donor-card selected`;
+            div.dataset.pairId = myPair.pair_id;
+            div.dataset.pairData = JSON.stringify(myPair);
+            div.innerHTML = `
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="m-0">Donor: ${myPair.donor_name.split(" ")[0]} -> Recipient: ${myPair.recipient_name.split(" ")[0]}</h6>
+                        <span class="badge">HLA Match:</strong> ${myPair.HLA_match}</span>
+                    </div>
+                    <div style="font-size: 0.85em;" class="mt-1 text-muted">
+                      <span><strong>Recipient Age:</strong> ${myPair.recipient_age}</span> |
+                      <span><strong>Disease:</strong> ${myPair.disease}</span> |
+                      <span><strong>Risk Group:</strong> ${myPair.risk_group}</span> 
+                    </div>
+                </div>
+            `;
+            container2.appendChild(div);
+            document.getElementById("decimal1").value =
+              myPair.CD34_x1e6_per_kg || "";
+            document.getElementById("decimal2").value =
+              myPair.CD3_x1e8_per_kg || "";
+
+            if (myPair.stem_cell_source) {
+              const sourceVal = myPair.stem_cell_source
+                .toLowerCase()
+                .includes("peripheral")
+                ? "peripheral"
+                : "bonemarrow";
+              document.getElementById("sourceSelect").value = sourceVal;
+            }
+
+            console.log("Aba 2 filtrada apenas para o par:", pairId);
+          } else {
+            container2.innerHTML =
+              '<div class="alert alert-warning small">Pair not found.</div>';
+          }
+        } catch (error) {
+          console.error("Erro ao processar dados do transplante:", error);
+        }
+      }
+      async function loadAllTransplantPairs(highlightId = null) {
+        try {
+          const response = await fetch(
+            "http://localhost:5001/transplant-pairs",
+          );
+          const result = await response.json();
+          const pairs = JSON.parse(result.data.without_transplant);
+          const container2 = document.querySelectorAll(
+            "#waitingListContainer",
+          )[1];
+          if (!container2) return;
+          pairs.forEach((pair) => {
+            const div = document.createElement("div");
+            const isSelected = pair.pair_id === highlightId ? "selected" : "";
+
+            div.className = `card mb-2 donor-card ${isSelected}`;
+            div.dataset.pairData = JSON.stringify(pair);
+            div.dataset.pairId = pair.pair_id;
+
+            div.innerHTML = `
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="m-0">D: ${pair.donor_name.split(" ")[0]} -> R: ${pair.recipient_name.split(" ")[0]}</h6>
+                        <span class="badge">HLA Match:</strong> ${pair.HLA_match}</span>
+                    </div>
+                    <div style="font-size: 0.85em;" class="mt-1 text-muted">
+                      <span><strong>Recipient Age:</strong> ${pair.recipient_age}</span> |
+                      <span><strong>Disease:</strong> ${pair.disease}</span> |
+                      <span><strong>Risk Group:</strong> ${pair.risk_group}</span> 
+                    </div>
+                </div>
+            `;
+            div.addEventListener("click", function () {
+              container2
+                .querySelectorAll(".donor-card")
+                .forEach((c) => c.classList.remove("selected"));
+              this.classList.add("selected");
+              document.getElementById("decimal1").value =
+                pair.CD34_x1e6_per_kg || "";
+              document.getElementById("decimal2").value =
+                pair.CD3_x1e8_per_kg || "";
+              if (pair.stem_cell_source) {
+                const sourceVal = pair.stem_cell_source
+                  .toLowerCase()
+                  .includes("peripheral")
+                  ? "peripheral"
+                  : "bonemarrow";
+                document.getElementById("sourceSelect").value = sourceVal;
+              }
+            });
+
+            container2.appendChild(div);
+          });
+          if (highlightId) {
+            const target = Array.from(
+              container2.querySelectorAll(".donor-card"),
+            ).find((c) => c.dataset.pairId === highlightId);
+            if (target) {
+              target.click();
+              target.scrollIntoView({ behavior: "smooth", block: "center" });
+            }
+          }
+        } catch (error) {
+          console.error("Erro ao processar lista de pares:", error);
+        }
+      }
+      document
+        .getElementById("submitBtn2")
+        .addEventListener("click", async () => {
+          const selectedPairCard = document.querySelector(
+            "#segundo .donor-card.selected",
+          );
+
+          if (!selectedPairCard) {
+            Swal.fire(
+              "Aviso",
+              "Por favor, selecione um par na lista lateral antes de pesquisar.",
+              "warning",
+            );
+            return;
+          }
+
+          // 1. Extração de dados do card e dos inputs
+          const pairId = selectedPairCard.dataset.pairId;
+          const pairData = JSON.parse(selectedPairCard.dataset.pairData);
+
+          const cd34Value = document.getElementById("decimal1").value;
+          const cd3Value = document.getElementById("decimal2").value;
+          const sourceSelect = document.getElementById("sourceSelect").value;
+
+          // Mapeamento para o formato que o servidor espera
+          const sourceText =
+            sourceSelect === "bonemarrow" ? "bone_marrow" : "peripheral_blood";
+
+          if (!cd34Value || !cd3Value) {
+            Swal.fire("Erro", "Preencha os valores de CD34 e CD3.", "error");
+            return;
+          }
+
+          // 2. Feedback visual de carregamento
           Swal.fire({
-            title: 'Sucesso!',
-            text: `Par ${newPairId} criado com sucesso!`,
-            icon: 'success',
-            confirmButtonColor: '#28a745',
-            confirmButtonText: 'Ir para Transplante'
-          }).then(async (swalResult) => {
-            if (swalResult.isConfirmed) {
-              Mostra(2);
-              await fetchAndFillTransplantDetails(newPairId);
-            }
-          });
-        }
-      } catch (error) {
-        console.error('Erro ao enviar POST:', error);
-        alert('Erro de conexão com o servidor.');
-      }
-    });
-    async function fetchAndFillTransplantDetails(pairId) {
-      try {
-        const response = await fetch('http://localhost:5001/transplant-pairs');
-        const result = await response.json();
-        const withoutTransplant = JSON.parse(result.data.without_transplant);
-        const myPair = withoutTransplant.find(p => p.pair_id === pairId);
-        const container2 = document.querySelectorAll('#waitingListContainer')[1];
-        if (!container2) return;
-        container2.innerHTML = '';
-
-        if (myPair) {
-          const div = document.createElement('div');
-          div.className = `card mb-2 shadow-sm border-start border-primary donor-card selected`;
-          div.style.borderLeftWidth = '5px';
-          div.dataset.pairId = myPair.pair_id;
-          div.dataset.pairData = JSON.stringify(myPair);
-          div.innerHTML = `
-                <div class="card-body p-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <strong style="font-size: 0.9em;">${myPair.pair_id}</strong>
-                        <span class="badge bg-primary" style="font-size: 0.7em;">HLA: ${myPair.HLA_match}/10</span>
-                    </div>
-                    <div class="text-muted" style="font-size: 0.8em; margin-top: 4px;">
-                        R: ${myPair.recipient_name.split(' ')[0]} ↔ D: ${myPair.donor_name.split(' ')[0]}
-                    </div>
-                </div>
-            `;
-          container2.appendChild(div);
-          document.getElementById('decimal1').value = myPair.CD34_x1e6_per_kg || "";
-          document.getElementById('decimal2').value = myPair.CD3_x1e8_per_kg || "";
-
-          if (myPair.stem_cell_source) {
-            const sourceVal = myPair.stem_cell_source.toLowerCase().includes('peripheral') ? 'peripheral' : 'bonemarrow';
-            document.getElementById('sourceSelect').value = sourceVal;
-          }
-
-          console.log("Aba 2 filtrada apenas para o par:", pairId);
-        } else {
-          container2.innerHTML = '<div class="alert alert-warning small">Pair not found.</div>';
-        }
-
-      } catch (error) {
-        console.error('Erro ao processar dados do transplante:', error);
-      }
-    }
-    async function loadAllTransplantPairs(highlightId = null) {
-      try {
-        const response = await fetch('http://localhost:5001/transplant-pairs');
-        const result = await response.json();
-        const pairs = JSON.parse(result.data.without_transplant);
-        const container2 = document.querySelectorAll('#waitingListContainer')[1];
-        if (!container2) return;
-        pairs.forEach(pair => {
-          const div = document.createElement('div');
-          const isSelected = (pair.pair_id === highlightId) ? 'selected' : '';
-
-          div.className = `card mb-2 shadow-sm border-start border-primary donor-card ${isSelected}`;
-          div.style.borderLeftWidth = '5px';
-          div.dataset.pairData = JSON.stringify(pair);
-          div.dataset.pairId = pair.pair_id;
-
-          div.innerHTML = `
-                <div class="card-body p-2">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <strong style="font-size: 0.9em;">${pair.pair_id}</strong>
-                        <span class="badge bg-primary" style="font-size: 0.7em;">HLA: ${pair.HLA_match}/10</span>
-                    </div>
-                    <div class="text-muted" style="font-size: 0.8em; margin-top: 4px;">
-                        R: ${pair.recipient_name.split(' ')[0]} ↔ D: ${pair.donor_name.split(' ')[0]}
-                    </div>
-                </div>
-            `;
-          div.addEventListener('click', function () {
-            container2.querySelectorAll('.donor-card').forEach(c => c.classList.remove('selected'));
-            this.classList.add('selected');
-            document.getElementById('decimal1').value = pair.CD34_x1e6_per_kg || "";
-            document.getElementById('decimal2').value = pair.CD3_x1e8_per_kg || "";
-            if (pair.stem_cell_source) {
-              const sourceVal = pair.stem_cell_source.toLowerCase().includes('peripheral') ? 'peripheral' : 'bonemarrow';
-              document.getElementById('sourceSelect').value = sourceVal;
-            }
+            title: "Processing Prediction...",
+            allowOutsideClick: false,
+            didOpen: () => {
+              Swal.showLoading();
+            },
           });
 
-          container2.appendChild(div);
-        });
-        if (highlightId) {
-          const target = Array.from(container2.querySelectorAll('.donor-card'))
-            .find(c => c.dataset.pairId === highlightId);
-          if (target) {
-            target.click();
-            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          try {
+            // 3. Chamada real ao Servidor via POST
+            const response = await fetch(
+              `http://localhost:5001/transplant-pairs/${pairId}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  stem_cell_source: sourceText,
+                  CD34_x1e6_per_kg: parseFloat(cd34Value), // Converte string para decimal
+                  CD3_x1e8_per_kg: parseFloat(cd3Value), // Converte string para decimal
+                }),
+              },
+            );
+            console.log({
+              stem_cell_source: sourceText,
+              CD34_x1e6_per_kg: parseFloat(cd34Value), // Converte string para decimal
+              CD3_x1e8_per_kg: parseFloat(cd3Value), // Converte string para decimal
+            });
+            if (response.ok) {
+              const result = await response.json();
+              Swal.close();
+
+              const container = document.querySelectorAll(
+                "#resultChecklistContainer",
+              )[1];
+              renderDashboard(
+                container,
+                pairData,
+                result.predicted_relapse,
+                cd34Value,
+                cd3Value,
+                sourceText,
+              );
+            } else {
+              const errorData = await response.json();
+              Swal.fire(
+                "Erro",
+                errorData.error || "Falha na predição",
+                "error",
+              );
+            }
+          } catch (error) {
+            console.error("Erro no POST:", error);
+            Swal.fire(
+              "Erro",
+              "Não foi possível contactar o servidor.",
+              "error",
+            );
           }
-        }
-
-      } catch (error) {
-        console.error('Erro ao processar lista de pares:', error);
-      }
-    }
-    document.getElementById('submitBtn2').addEventListener('click', async () => {
-      const selectedPairCard = document.querySelector('#segundo .donor-card.selected');
-
-      if (!selectedPairCard) {
-        Swal.fire('Aviso', 'Por favor, selecione um par na lista lateral antes de pesquisar.', 'warning');
-        return;
-      }
-
-      // 1. Extração de dados do card e dos inputs
-      const pairId = selectedPairCard.dataset.pairId;
-      const pairData = JSON.parse(selectedPairCard.dataset.pairData);
-
-      const cd34Value = document.getElementById('decimal1').value;
-      const cd3Value = document.getElementById('decimal2').value;
-      const sourceSelect = document.getElementById('sourceSelect').value;
-
-      // Mapeamento para o formato que o servidor espera
-      const sourceText = sourceSelect === 'bonemarrow' ? 'bone_marrow' : 'peripheral_blood';
-
-      if (!cd34Value || !cd3Value) {
-        Swal.fire('Erro', 'Preencha os valores de CD34 e CD3.', 'error');
-        return;
-      }
-
-      // 2. Feedback visual de carregamento
-      Swal.fire({
-        title: 'Processing Prediction...',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading(); }
-      });
-
-      try {
-        // 3. Chamada real ao Servidor via POST
-        const response = await fetch(`http://localhost:5001/transplant-pairs/${pairId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            "stem_cell_source": sourceText,
-            "CD34_x1e6_per_kg": parseFloat(cd34Value), // Converte string para decimal
-            "CD3_x1e8_per_kg": parseFloat(cd3Value)    // Converte string para decimal
-          })
         });
-        console.log({
-          "stem_cell_source": sourceText,
-          "CD34_x1e6_per_kg": parseFloat(cd34Value), // Converte string para decimal
-          "CD3_x1e8_per_kg": parseFloat(cd3Value)    // Converte string para decimal
-        })
-        if (response.ok) {
-          const result = await response.json();
-          Swal.close();
 
-          const container = document.querySelectorAll('#resultChecklistContainer')[1];
-          renderDashboard(container, pairData, result.predicted_relapse, cd34Value, cd3Value, sourceText);
-        } else {
-          const errorData = await response.json();
-          Swal.fire('Erro', errorData.error || 'Falha na predição', 'error');
+      function renderDashboard(
+        container,
+        pair,
+        relapseValue,
+        cd34,
+        cd3,
+        source,
+      ) {
+        // Tratamento para resposta numérica: 0 = NO, 1 = YES
+        // Se vier como string "0", o == também funciona
+        const isNoRelapse = relapseValue == 0;
+        const relapseText = isNoRelapse ? "NO" : "YES";
+
+        const statusColor = isNoRelapse ? "#28a745" : "#dc3545";
+        const bgColor = isNoRelapse ? "#f0fff4" : "#fff5f5";
+
+        const panel = container.closest(".panel.large");
+        if (panel) {
+          panel.style.backgroundColor = bgColor;
         }
-      } catch (error) {
-        console.error('Erro no POST:', error);
-        Swal.fire('Erro', 'Não foi possível contactar o servidor.', 'error');
-      }
-    });
 
-    function renderDashboard(container, pair, relapseValue, cd34, cd3, source) {
-      // Tratamento para resposta numérica: 0 = NO, 1 = YES
-      // Se vier como string "0", o == também funciona
-      const isNoRelapse = relapseValue == 0;
-      const relapseText = isNoRelapse ? "NO" : "YES";
-
-      const statusColor = isNoRelapse ? '#28a745' : '#dc3545';
-      const bgColor = isNoRelapse ? '#f0fff4' : '#fff5f5';
-
-      const panel = container.closest('.panel.large');
-      if (panel) {
-        panel.style.backgroundColor = bgColor;
-      }
-
-      container.innerHTML = `
+        container.innerHTML = `
         <div class="card border-0 shadow-sm" style="background: ${bgColor}; border-radius: 12px; height: 100%;">
             <div class="card-body p-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="m-0 fw-bold" style="color: #333;">Transplant Outcome Prediction</h4>
-                    <span class="badge p-3 fs-5" style="background-color: ${statusColor}; min-width: 120px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                    <h6 class="m-0 fw-bold" style="color: #333;">Transplant Outcome Prediction</h6>
+                    <span class="badge p-3 fs-4" style="background-color: ${statusColor}; min-width: 120px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
                         RELAPSE: ${relapseText}
                     </span>
                 </div>
 
                 <div class="row g-4">
                     <div class="col-md-6">
-                        <div class="p-3 bg-white rounded shadow-sm border-top border-primary border-4" style="min-height: 180px;">
-                            <h6 class="text-primary fw-bold mb-3">Recipient Details</h6>
+                        <div class="p-3 bg-white rounded shadow-sm border-top border-success border-4" style="min-height: 180px;">
+                            <h6 class="text-success fw-bold mb-3">Recipient Details</h6>
                             <ul class="list-unstyled mb-0" style="font-size: 0.9rem;">
                                 <li class="mb-2"><strong>Name:</strong> ${pair.recipient_name}</li>
                                 <li class="mb-2"><strong>Age:</strong> ${pair.recipient_age} yrs</li>
                                 <li class="mb-2"><strong>Gender:</strong> ${pair.recipient_gender}</li>
                                 <li class="mb-2"><strong>Mass:</strong> ${pair.recipient_body_mass} kg</li>
-                                <li><strong>Disease:</strong> <span class="badge bg-secondary">${pair.disease}</span></li>
+                                <li><strong>Disease:</strong> <span class="badge">${pair.disease}</span></li>
                             </ul>
                         </div>
                     </div>
 
                     <div class="col-md-6">
-                        <div class="p-3 bg-white rounded shadow-sm border-top border-success border-4" style="min-height: 180px;">
-                            <h6 class="text-success fw-bold mb-3">Donor Details</h6>
+                        <div class="p-3 bg-white rounded shadow-sm border-top  border-4" style="min-height: 180px;">
+                            <h6 class="fw-bold mb-3">Donor Details</h6>
                             <ul class="list-unstyled mb-0" style="font-size: 0.9rem;">
                                 <li class="mb-2"><strong>Name:</strong> ${pair.donor_name}</li>
                                 <li class="mb-2"><strong>Age:</strong> ${pair.donor_age} yrs</li>
@@ -729,9 +983,7 @@
             </div>
         </div>
     `;
-    }
-  </script>
-
-</body>
-
+      }
+    </script>
+  </body>
 </html>
